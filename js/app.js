@@ -140,6 +140,15 @@ function syncAd() {
   adDecided = false;
   considerAd();
 }
+/** Files Soukhya's optional review of the joke she just heard (not for Saksham's preview). */
+function sendReview() {
+  const ad = S.ad;
+  if (!ad || ad.stage !== 'punch' || ad.preview) return;
+  const text = (document.getElementById('adreview')?.value ?? ad.review ?? '').trim().slice(0, 300);
+  if (!text) return;
+  S.store.addReview?.({ joke: `${ad.joke.setup} ${ad.joke.punch}`.trim(), text, at: Date.now(), player: S.me });
+  toast('Review filed. 📝 It will be taken very seriously.');
+}
 function adHTML() {
   const { stage } = S.ad;
   const joke = { setup: J.twks(S.ad.joke.setup), punch: J.twks(S.ad.joke.punch) };
@@ -152,6 +161,9 @@ function adHTML() {
       ${joke.punch ? '<button class="btn lav" data-a="adPunch">Tell me Already!</button>' : '<button class="btn ghost" data-a="adMore">Another one 😭</button>'}`;
   } else {
     body = `<span class="ad-emo">😏</span><h2>${esc(joke.setup)}</h2><div class="ad-punch">${esc(joke.punch)}</div>
+      <label class="ad-rl" for="adreview">Any words for this bad joke? <span class="muted">(optional)</span></label>
+      <textarea id="adreview" rows="2" maxlength="300" placeholder="Rate it, roast it, beg for mercy…">${esc(S.ad.review || '')}</textarea>
+      <div class="gap"></div>
       <div class="row"><button class="btn mint" data-a="adMore">Another one 😭</button><button class="btn ghost" data-a="adClose">I'm done</button></div>`;
   }
   return `<div class="overlay ad-overlay"><div class="ad" data-stop>
@@ -187,13 +199,26 @@ function secretHTML() {
       <div class="gap"></div>
       <button class="btn ghost small" data-a="secretPreview">👀 Preview it on my phone</button>
     </div>
+    <div class="card">
+      <h2>💬 ${esc(names.soukhya)}'s reviews <span class="sticker">${(S.reviews || []).length}</span></h2>
+      ${(S.reviews || []).length ? S.reviews.map((r) => `<div class="review"><div class="muted" style="font-size:13px">${esc(r.joke)}</div><div class="speech">${esc(r.text)}</div><div class="muted" style="font-size:11px;margin-top:2px">${esc(new Date(r.at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }))}</div></div>`).join('') : '<p class="muted" style="font-size:15px">No reviews yet. When she types a review after a joke, it shows up here.</p>'}
+    </div>
   </div></div>`;
 }
 async function unlockSecret() {
   const pw = (document.getElementById('secretpw')?.value || '').trim().toLowerCase();
   let ok = false;
   try { ok = (await sha256(pw)) === SECRET_HASH; } catch { ok = false; }
-  if (ok) { S.secret = 'panel'; render(); } else toast('Nope. 🙅');
+  if (ok) { S.secret = 'panel'; watchReviews(); render(); } else toast('Nope. 🙅');
+}
+let reviewsWatched = false;
+function watchReviews() {
+  if (reviewsWatched || !S.store?.subscribeReviews) return;
+  reviewsWatched = true;
+  S.store.subscribeReviews((list) => {
+    S.reviews = list.sort((a, b) => (b.at || 0) - (a.at || 0));
+    if (S.secret === 'panel' && !S.ad) render();
+  }, (err) => console.warn('reviews unavailable', err.code || err.message));
 }
 async function toggleAd() {
   const next = !adEnabled();
@@ -589,9 +614,9 @@ document.addEventListener('click', (ev) => {
     }
     case 'adYes': S.ad.stage = 'joke'; break;
     case 'adPunch': S.ad.stage = 'punch'; break;
-    case 'adMore': S.ad = { stage: 'joke', joke: nextJoke(), preview: S.ad.preview }; break;
-    case 'adNo': if (!S.ad.preview) toast('Fine. I\'ll ask again. 😈'); S.ad = null; break;
-    case 'adClose': S.ad = null; break;
+    case 'adMore': sendReview(); S.ad = { stage: 'joke', joke: nextJoke(), preview: S.ad.preview }; break;
+    case 'adNo': sendReview(); if (!S.ad.preview && S.ad.stage === 'ask') toast('Fine. I\'ll ask again. 😈'); S.ad = null; break;
+    case 'adClose': sendReview(); S.ad = null; break;
     case 'logoTap': {
       if (S.me !== 'saksham') return;
       const now = Date.now();
@@ -639,6 +664,7 @@ document.addEventListener('keydown', (e) => {
 
 document.addEventListener('input', (e) => {
   if (e.target.id === 'note' && S.wiz) S.wiz.note = e.target.value;
+  if (e.target.id === 'adreview' && S.ad) S.ad.review = e.target.value;
 });
 
 // ====================== Boot ======================
@@ -648,14 +674,14 @@ function onData(entries) {
   S.loaded = true;
   S.error = null;
   // Don't blow away what the user is typing.
-  if (['note', 'secretpw'].includes(document.activeElement?.id)) return;
+  if (['note', 'secretpw', 'adreview'].includes(document.activeElement?.id)) return;
   render();
 }
 
 function onSettings(map) {
   S.settings = map || {};
   if (!adEnabled()) { clearTimeout(adTimer); if (S.ad && !S.ad.preview) S.ad = null; } else considerAd();
-  if (S.loaded && document.activeElement?.id !== 'secretpw') render();
+  if (S.loaded && !['secretpw', 'adreview'].includes(document.activeElement?.id)) render();
 }
 
 function seedDemo(store) {

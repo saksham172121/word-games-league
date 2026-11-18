@@ -49,6 +49,18 @@ async function firebaseStore() {
         (err) => onError?.(err),
       );
     },
+    async addReview(review) {
+      await ready;
+      fs.addDoc(fs.collection(db, 'jokeReviews'), review).catch((e) => console.error('review failed', e)); // queued offline by Firestore
+    },
+    async subscribeReviews(onData, onError) {
+      try { await ready; } catch (e) { onError?.(e); return () => {}; }
+      return fs.onSnapshot(
+        fs.collection(db, 'jokeReviews'),
+        (snap) => onData(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+        (err) => onError?.(err),
+      );
+    },
     async setSetting(key, value) {
       await ready;
       await Promise.race([
@@ -100,6 +112,19 @@ function localStore() {
     },
     async subscribeSettings(onData) {
       const read = () => { try { return JSON.parse(localStorage.getItem('wgl-settings-v1') || '{}'); } catch { return {}; } };
+      listeners.add(() => onData(read()));
+      onData(read());
+      return () => {};
+    },
+    async addReview(review) {
+      let all = [];
+      try { all = JSON.parse(localStorage.getItem('wgl-reviews-v1') || '[]'); } catch {}
+      all.push({ id: String(Date.now()), ...review });
+      localStorage.setItem('wgl-reviews-v1', JSON.stringify(all));
+      emit();
+    },
+    async subscribeReviews(onData) {
+      const read = () => { try { return JSON.parse(localStorage.getItem('wgl-reviews-v1') || '[]'); } catch { return []; } };
       listeners.add(() => onData(read()));
       onData(read());
       return () => {};

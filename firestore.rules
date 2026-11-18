@@ -15,6 +15,17 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // Optional reviews of the dad jokes (readable in Saksham's secret panel).
+    match /jokeReviews/{id} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+        && request.resource.data.text is string
+        && request.resource.data.text.size() <= 300
+        && request.resource.data.joke is string
+        && request.resource.data.joke.size() <= 500;
+      allow update, delete: if false;
+    }
+
     // App switches (e.g. the dad-joke popup toggle in the secret panel).
     match /settings/{id} {
       allow read: if request.auth != null;

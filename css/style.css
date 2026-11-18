@@ -223,3 +223,8 @@ textarea:focus { outline: 3px solid var(--lav); }
 
 .pw { width: 100%; border: var(--line); border-radius: 16px; padding: 14px; font: inherit; font-size: 20px; background: #fff; color: var(--ink); }
 .pw:focus { outline: 3px solid var(--lav); }
+
+.ad-rl { display: block; text-align: left; font-weight: 600; font-size: 15px; margin: 4px 0 6px; }
+.ad textarea { font-size: 16px; }
+.review { padding: 8px 0; border-top: 2px dashed rgba(59,42,77,.18); }
+.review:first-of-type { border-top: 0; }
