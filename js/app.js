@@ -5,6 +5,7 @@ import * as J from './jokes.js';
 import { createStore } from './store.js';
 import { confetti } from './confetti.js';
 import { DAD_JOKES } from './dadjokes.js';
+import { APP_VERSION } from './version.js';
 
 const $app = document.getElementById('app');
 const names = Object.fromEntries(PLAYERS.map((p) => [p.id, p.name]));
@@ -92,12 +93,53 @@ function render() {
     ${S.store?.mode === 'local' ? '<div class="banner demo">🧪 Demo mode: scores are saved only on this device. Finish the Firebase setup (SETUP.md) to share with Soukhya.</div>' : ''}
     ${S.error ? `<div class="banner">😵 Can't reach the server right now. Showing what I have. (${esc(S.error)})</div>` : ''}
     ${view}
+    ${S.me === 'saksham' ? verHTML() : ''}
     ${tabsHTML()}
     ${S.sheet ? sheetHTML() : ''}
     ${S.wiz ? wizHTML() : ''}
     ${S.secret && S.me === 'saksham' ? secretHTML() : ''}
     ${S.ad ? adHTML() : ''}`;
   if (S.secret === 'login') document.getElementById('secretpw')?.focus();
+}
+
+// ====================== Version (shown on Saksham's side) ======================
+// S.latest = version currently on the server (fetched from sw.js, bypassing every cache).
+function verHTML() {
+  const newer = S.latest && S.latest !== APP_VERSION;
+  return `<p class="ver">Version ${esc(APP_VERSION)}${newer ? ` · <b>v${esc(S.latest)} is out. Close and reopen the app to update.</b>` : S.latest ? ' · up to date ✓' : ''}</p>`;
+}
+async function checkLatest() {
+  try {
+    const res = await fetch(`sw.js?nocache=${Date.now()}`, { cache: 'no-store' });
+    const v = (await res.text()).match(/const VERSION = '([^']+)'/)?.[1];
+    if (v && v !== S.latest) {
+      S.latest = v;
+      if (S.loaded && S.me === 'saksham' && !['note', 'secretpw', 'adreview'].includes(document.activeElement?.id)) render();
+    }
+  } catch { /* offline: just show the running version */ }
+}
+
+// ====================== Morning notification ======================
+// First open of the day between 5:00 and 11:59 shows a slide-down "notification". It lives outside #app so
+// re-renders never touch it.
+let morningChecked = false;
+function maybeMorning() {
+  if (morningChecked || !S.me || !S.loaded || gated) return;
+  morningChecked = true;
+  const n = J.timeNotif(new Date().getHours());
+  if (!n || ls.get('wgl-morning') === todayISO()) return;
+  ls.set('wgl-morning', todayISO());
+  setTimeout(() => showNotif(n), 700);
+}
+function showNotif({ emoji, title, sub }) {
+  const el = document.createElement('div');
+  el.className = 'notif';
+  el.setAttribute('role', 'status');
+  el.innerHTML = `<span class="notif-e">${emoji}</span><div><b>${esc(title)}</b><div>${esc(sub)}</div></div>`;
+  const close = () => { el.classList.add('out'); setTimeout(() => el.remove(), 350); };
+  el.addEventListener('click', close);
+  document.body.appendChild(el);
+  setTimeout(close, 7000);
 }
 
 // ====================== Soukhya's irritating dad-joke ad ======================
@@ -606,7 +648,7 @@ document.addEventListener('click', (ev) => {
   if (el.classList.contains('overlay') && ev.target.closest('.sheet')) return;
   const a = el.dataset.a, v = el.dataset.v;
   switch (a) {
-    case 'who': S.me = v; ls.set('wgl-me', v); S.greet = null; syncAd(); break;
+    case 'who': S.me = v; ls.set('wgl-me', v); S.greet = null; syncAd(); maybeMorning(); break;
     case 'switchWho': {
       const other = otherPlayer(S.me);
       if (!confirm(`Switch to ${other.name}?`)) return;
@@ -676,6 +718,7 @@ function onData(entries) {
   // Don't blow away what the user is typing.
   if (['note', 'secretpw', 'adreview'].includes(document.activeElement?.id)) return;
   render();
+  maybeMorning();
 }
 
 function onSettings(map) {
@@ -722,6 +765,8 @@ async function main() {
   registerSW(); // also needed in the browser so Android treats the site as installable
   if (gated) { render(); return; } // browser tab: show only the "add to home screen" page
   render();
+  checkLatest();
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) checkLatest(); });
   const loadTimer = setInterval(() => { if (S.loaded) return clearInterval(loadTimer); S.loadingMsg = J.randomLoading(); render(); }, 1800);
   try {
     S.store = await createStore();

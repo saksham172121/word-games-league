@@ -1,11 +1,11 @@
 // Tiny service worker: makes the app open instantly and work offline.
 // Bump VERSION whenever you change files so phones pick up the update.
-const VERSION = 'v7';
+const VERSION = '1.8.0';
 const CACHE = `wgl-${VERSION}`;
 const SHELL = [
   './', 'index.html', 'manifest.webmanifest', 'css/style.css',
   'js/app.js', 'js/scoring.js', 'js/stats.js', 'js/dates.js', 'js/jokes.js', 'js/store.js',
-  'js/firebase-config.js', 'js/confetti.js', 'js/dadjokes.js',
+  'js/firebase-config.js', 'js/confetti.js', 'js/dadjokes.js', 'js/version.js',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-180.png',
 ];
 
@@ -30,6 +30,7 @@ self.addEventListener('fetch', (e) => {
     url.hostname === 'fonts.googleapis.com' ||
     url.hostname === 'fonts.gstatic.com';
   if (!cacheable) return; // Firestore/Auth traffic goes straight to the network
+  if (url.searchParams.has('nocache')) return; // the app's "is there a newer version?" check must hit the network
 
   // Stale-while-revalidate
   e.respondWith(

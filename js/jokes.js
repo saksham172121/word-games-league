@@ -154,6 +154,14 @@ export function streakLine(name, n) {
   return `${name}: streak is zero. Reset. Breathe. 🧘`;
 }
 
+/** Time-of-day notification shown when the app is opened. Returns null outside the morning (5:00-11:59). */
+export function timeNotif(hour) {
+  if (hour >= 5 && hour < 12) {
+    return { emoji: '☀️', title: 'TOP OF THE MORNING TO YOU SAILOR', sub: 'Wordle won\'t play itself. 🧇' };
+  }
+  return null;
+}
+
 export const LOADING = [
   'Warming up the waffle iron…', 'Asking the dictionary nicely…', 'Untangling the letters…',
   'Judging you silently…', 'Polishing the trophies…', 'Bribing the leaderboard…', 'Counting the tears…',
