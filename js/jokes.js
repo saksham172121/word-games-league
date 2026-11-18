@@ -2,7 +2,9 @@
 
 const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
 const fill = (s, v = {}) => s.replace(/\{(\w+)\}/g, (_, k) => v[k] ?? '');
-const say = (arr, v) => fill(pick(arr), v);
+/** Any laugh ("hehehe", "hahaha", "hihihi"...) becomes "hehehehe ~twks" (that's what she said). */
+export const twks = (s) => String(s).replace(/\b(?:h[aeiou]){3,}h?\b(?!\s*~twks)/gi, 'hehehehe ~twks');
+const say = (arr, v) => twks(fill(pick(arr), v));
 
 const WORDLE = {
   1: [
@@ -21,6 +23,7 @@ const WORDLE = {
     'Three guesses. Your brain is doing yoga today. 🧘',
   ],
   4: [
+    'Four. Not too big, not too small, just right. ~twks 😏',
     '4/6. The human average. Beautifully, boringly normal. 🧍',
     'A solid 4. Not a legend, not a disaster, just vibes. ✌️',
     'Four. Respectable. Nobody will write songs about it, but still.',
@@ -34,12 +37,14 @@ const WORDLE = {
     '6/6. Last life, final boss, cinematic. Heart rate: 140. Dignity: gone. 🎬',
     'SIX. You clutched it by one inch. Be proud. Be very quiet about it.',
     'You won on the last guess. Technically a win. Spiritually a hostage situation. 😮‍💨',
+    'It took six tries to get it in, but you finished. ~twks 😏',
   ],
   X: [
     'X. 💀 We hold a moment of silence 🕯️ and then we laugh.',
     'Failed. The word was probably "EASY" and that is the joke.',
     'X/6. The dictionary has filed a restraining order. 📜',
     'Wordle Defeated You. Even the cursor felt bad. 😭',
+    'X. It just would not go in. ~twks 😏',
   ],
 };
 

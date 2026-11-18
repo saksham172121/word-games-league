@@ -4,6 +4,7 @@ import { todayISO, prettyDate, monthKey, monthTitle, shiftMonth, fromISO, toISO 
 import * as J from './jokes.js';
 import { createStore } from './store.js';
 import { confetti } from './confetti.js';
+import { DAD_JOKES } from './dadjokes.js';
 
 const $app = document.getElementById('app');
 const names = Object.fromEntries(PLAYERS.map((p) => [p.id, p.name]));
@@ -29,6 +30,7 @@ const S = {
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const vars = () => ({ me: names[S.me], them: names[otherPlayer(S.me)?.id] });
+const nickHTML = (id) => (playerById(id)?.nick ? `<div class="nick">${esc(playerById(id).nick)}</div>` : '');
 const standalone = () => navigator.standalone === true || matchMedia('(display-mode: standalone)').matches;
 // The app only runs when launched from the home screen. Local dev (localhost) is exempt,
 // unless you add ?install=1 to preview the install screen.
@@ -89,7 +91,52 @@ function render() {
     ${view}
     ${tabsHTML()}
     ${S.sheet ? sheetHTML() : ''}
-    ${S.wiz ? wizHTML() : ''}`;
+    ${S.wiz ? wizHTML() : ''}
+    ${S.ad ? adHTML() : ''}`;
+}
+
+// ====================== Soukhya's irritating dad-joke ad ======================
+let adTimer = null;
+let jokeBag = [];
+const rnd = (a, b) => Math.floor(Math.random() * (b - a + 1)) + a;
+function nextJoke() {
+  if (!jokeBag.length) jokeBag = DAD_JOKES.map((_, i) => i).sort(() => Math.random() - 0.5);
+  const j = DAD_JOKES[jokeBag.pop()];
+  return Array.isArray(j) ? { setup: j[0], punch: j[1] } : { setup: j, punch: '' };
+}
+function scheduleAd(ms = rnd(15000, 45000)) {
+  clearTimeout(adTimer);
+  adTimer = setTimeout(tryAd, ms);
+}
+function tryAd() {
+  if (S.me !== 'soukhya' || !DAD_JOKES.length) return;
+  if (S.wiz || S.sheet || S.ad || document.hidden) return scheduleAd(10000); // never interrupt entering scores
+  S.ad = { stage: 'ask', joke: nextJoke() };
+  render();
+}
+function syncAd() {
+  clearTimeout(adTimer);
+  S.ad = null;
+  if (S.me === 'soukhya' && !gated) scheduleAd();
+}
+function adHTML() {
+  const { stage } = S.ad;
+  const joke = { setup: J.twks(S.ad.joke.setup), punch: J.twks(S.ad.joke.punch) };
+  let body;
+  if (stage === 'ask') {
+    body = `<span class="ad-emo">🤡</span><h2>Do you want to hear a bad joke?</h2>
+      <div class="row"><button class="btn pink" data-a="adYes">Yes 😩</button><button class="btn ghost" data-a="adNo">No</button></div>`;
+  } else if (stage === 'joke') {
+    body = `<span class="ad-emo">🥁</span><h2>${esc(joke.setup)}</h2>
+      ${joke.punch ? '<button class="btn lav" data-a="adPunch">Reveal the punchline</button>' : '<button class="btn ghost" data-a="adMore">Another one 😭</button>'}`;
+  } else {
+    body = `<span class="ad-emo">😏</span><h2>${esc(joke.setup)}</h2><div class="ad-punch">${esc(joke.punch)}</div>
+      <div class="row"><button class="btn mint" data-a="adMore">Another one 😭</button><button class="btn ghost" data-a="adClose">I'm done</button></div>`;
+  }
+  return `<div class="overlay ad-overlay"><div class="ad" data-stop>
+    <span class="ad-tag">AD</span><button class="ad-x" data-a="adNo" aria-label="Close ad">×</button>${body}
+    <div class="ad-fine">Sponsored by Dad. Closing this ad will not make it stop.</div>
+  </div></div>`;
 }
 
 function topHTML() {
@@ -139,7 +186,7 @@ function dayScoresHTML(date) {
     return `<div class="gr">${cell(ea, A)}<div class="gname"><span>${g.emoji}</span>${g.name}</div>${cell(eb, B)}</div>`;
   }).join('');
   const notes = PLAYERS.map((p) => d.entries[p.id]?.note?.trim() ? `<div class="speech"><b>${esc(p.name)}:</b> ${esc(d.entries[p.id].note)}</div>` : '').join('');
-  return `<div class="names"><div>${esc(A.name)}</div><div></div><div>${esc(B.name)}</div></div>
+  return `<div class="names"><div>${esc(A.name)}</div><div></div><div>${esc(B.name)}${nickHTML(B.id)}</div></div>
     <div class="score-list">${rows || '<p class="muted" style="text-align:center">Nobody has played a game yet.</p>'}</div>${notes}`;
 }
 
@@ -165,7 +212,7 @@ function todayHTML() {
   const pcards = PLAYERS.map((p) => {
     const e = d?.entries[p.id];
     const w = d?.result.status === 'complete' && d.result.winner === p.id;
-    return `<div class="pcard ${p.id}"><div class="avatar" style="background:${p.color}">${p.short}</div><div class="pname">${esc(p.name)}${w ? ' 👑' : ''}</div><div class="pstat">${e ? '✅ Posted' : '⏳ Not yet'}</div></div>`;
+    return `<div class="pcard ${p.id}"><div class="avatar" style="background:${p.color}">${p.short}</div><div class="pname">${esc(p.name)}${w ? ' 👑' : ''}</div>${nickHTML(p.id)}<div class="pstat">${e ? '✅ Posted' : '⏳ Not yet'}</div></div>`;
   }).join('');
   return `
     <h2 style="font-size:26px;margin:0 2px 2px">${esc(S.greet)}</h2>
@@ -201,7 +248,7 @@ function boardHTML() {
       <div class="bigscore">
         <div><div class="n" style="color:#d6347c">${a.dayWins}</div><div class="l">${esc(names.saksham)}</div></div>
         <div class="vs">vs</div>
-        <div><div class="n" style="color:#1a9a70">${b.dayWins}</div><div class="l">${esc(names.soukhya)}</div></div>
+        <div><div class="n" style="color:#1a9a70">${b.dayWins}</div><div class="l">${esc(names.soukhya)}</div>${nickHTML('soukhya')}</div>
       </div>
       <div class="bar">${seg('a', a.dayWins)}${seg('t', a.dayTies)}${seg('b', b.dayWins)}</div>
       <div class="muted" style="font-size:13px;text-align:center">${stats.decided} decided day${stats.decided === 1 ? '' : 's'} · ${a.dayTies} tie${a.dayTies === 1 ? '' : 's'}</div>
@@ -462,12 +509,17 @@ document.addEventListener('click', (ev) => {
   if (el.classList.contains('overlay') && ev.target.closest('.sheet')) return;
   const a = el.dataset.a, v = el.dataset.v;
   switch (a) {
-    case 'who': S.me = v; ls.set('wgl-me', v); S.greet = null; break;
+    case 'who': S.me = v; ls.set('wgl-me', v); S.greet = null; syncAd(); break;
     case 'switchWho': {
       const other = otherPlayer(S.me);
       if (!confirm(`Switch to ${other.name}?`)) return;
-      S.me = other.id; ls.set('wgl-me', S.me); S.greet = null; break;
+      S.me = other.id; ls.set('wgl-me', S.me); S.greet = null; syncAd(); break;
     }
+    case 'adYes': S.ad.stage = 'joke'; break;
+    case 'adPunch': S.ad.stage = 'punch'; break;
+    case 'adMore': S.ad = { stage: 'joke', joke: nextJoke() }; break;
+    case 'adNo': S.ad = null; scheduleAd(rnd(60000, 120000)); toast('Fine. We\'ll ask again. 😈'); break; // "No" only makes it come back sooner
+    case 'adClose': S.ad = null; scheduleAd(rnd(180000, 360000)); break;
     case 'tab': S.view = v; scrollTo(0, 0); break;
     case 'period': S.period = v; break;
     case 'cal': S.calMonth = shiftMonth(S.calMonth, Number(v)); break;
@@ -549,6 +601,7 @@ async function main() {
   registerSW(); // also needed in the browser so Android treats the site as installable
   if (gated) { render(); return; } // browser tab: show only the "add to home screen" page
   render();
+  syncAd();
   const loadTimer = setInterval(() => { if (S.loaded) return clearInterval(loadTimer); S.loadingMsg = J.randomLoading(); render(); }, 1800);
   try {
     S.store = await createStore();

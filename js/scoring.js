@@ -2,7 +2,7 @@
 
 export const PLAYERS = [
   { id: 'saksham', name: 'Saksham', short: 'S', color: 'var(--pink)', soft: 'var(--pink-soft)' },
-  { id: 'soukhya', name: 'Soukhya', short: 'K', color: 'var(--mint)', soft: 'var(--mint-soft)' },
+  { id: 'soukhya', name: 'Soukhya', nick: 'Soukhya, the Custodian of Egypt, Conqueror of the Levant, Benevolent Kurdish Leader of the Caliphate', short: 'K', color: 'var(--mint)', soft: 'var(--mint-soft)' },
 ];
 
 // kind: 'wordle' = lower wins (X loses) · 'waffle' = stars 0-5, higher wins · 'high' = raw points, higher wins

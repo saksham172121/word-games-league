@@ -89,6 +89,9 @@ h1, h2, h3, p { margin: 0; }
 .avatar { width: 52px; height: 52px; border-radius: 50%; border: var(--line); margin: 0 auto 6px; display: grid; place-items: center; font-weight: 700; font-size: 22px; }
 .pname { font-weight: 700; font-size: 18px; }
 .pstat { font-size: 13px; font-weight: 600; }
+.nick { font-size: 10px; font-weight: 400; line-height: 1.2; color: var(--ink-soft); opacity: .8; margin: 1px 0 3px; font-style: italic; }
+.names .nick { font-size: 9px; }
+.bigscore .nick { font-size: 9px; }
 .score-list { margin-top: 10px; }
 .gr { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px; padding: 8px 0; border-top: 2px dashed rgba(59, 42, 77, .2); }
 .gr:first-child { border-top: 0; }
@@ -201,6 +204,16 @@ textarea:focus { outline: 3px solid var(--lav); }
 .step:first-child { border-top: 0; }
 .num { flex: none; width: 34px; height: 34px; border-radius: 50%; border: var(--line); background: var(--lemon); font-weight: 700; display: grid; place-items: center; }
 .kbd { display: inline-block; min-width: 26px; text-align: center; border: 2.5px solid var(--ink); border-radius: 8px; background: var(--sky-soft); padding: 0 5px; font-weight: 700; }
+
+/* ---------- Irritating ad ---------- */
+.ad-overlay { z-index: 70; align-items: center; padding: 20px; }
+.ad { position: relative; width: 100%; max-width: 380px; background: #fffbe0; border: 4px dashed var(--pink); outline: 3px solid var(--ink); border-radius: 24px; padding: 34px 18px 16px; text-align: center; box-shadow: 0 8px 0 var(--ink); animation: pop .35s both, wiggle 2.2s 0.4s infinite ease-in-out; }
+.ad h2 { font-size: 24px; margin: 6px 0 16px; }
+.ad-emo { font-size: 64px; display: block; line-height: 1; }
+.ad-tag { position: absolute; top: -14px; left: 14px; background: var(--lemon); border: 3px solid var(--ink); border-radius: 8px; padding: 0 10px; font-weight: 700; font-size: 14px; transform: rotate(-6deg); }
+.ad-x { position: absolute; top: 4px; right: 6px; width: 22px; height: 22px; border: 0; background: transparent; color: var(--ink-soft); font-size: 16px; line-height: 1; cursor: pointer; opacity: .6; }
+.ad-punch { background: #fff; border: 2.5px solid var(--ink); border-radius: 14px; padding: 10px 12px; font-weight: 600; margin-bottom: 14px; font-size: 18px; animation: pop .3s both; }
+.ad-fine { margin-top: 12px; font-size: 10px; color: var(--ink-soft); }
 
 #toast { position: fixed; left: 50%; bottom: calc(var(--tab-h) + 30px); transform: translateX(-50%) translateY(20px); background: var(--ink); color: #fff; padding: 10px 18px; border-radius: 999px; font-weight: 500; font-size: 15px; opacity: 0; pointer-events: none; transition: .25s; z-index: 80; max-width: 90vw; text-align: center; }
 #toast.show { opacity: 1; transform: translateX(-50%); }

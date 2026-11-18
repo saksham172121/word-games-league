@@ -96,3 +96,12 @@ test('dates: weekStart is Monday', () => {
   assert.equal(weekStart('2026-11-22'), '2026-11-16'); // Sun
   assert.equal(addDays('2026-12-31', 1), '2027-01-01');
 });
+
+import { twks } from '../js/jokes.js';
+test('twks: laughs become "hehehehe ~twks", idempotent, other words untouched', () => {
+  assert.equal(twks('well hahaha ok'), 'well hehehehe ~twks ok');
+  assert.equal(twks('hihihi!'), 'hehehehe ~twks!');
+  assert.equal(twks('HEHEHEHE'), 'hehehehe ~twks');
+  assert.equal(twks('hehehehe ~twks'), 'hehehehe ~twks');
+  assert.equal(twks('the heater is here, hehe'), 'the heater is here, hehe');
+});

@@ -1,11 +1,11 @@
 // Tiny service worker: makes the app open instantly and work offline.
 // Bump VERSION whenever you change files so phones pick up the update.
-const VERSION = 'v3';
+const VERSION = 'v5';
 const CACHE = `wgl-${VERSION}`;
 const SHELL = [
   './', 'index.html', 'manifest.webmanifest', 'css/style.css',
   'js/app.js', 'js/scoring.js', 'js/stats.js', 'js/dates.js', 'js/jokes.js', 'js/store.js',
-  'js/firebase-config.js', 'js/confetti.js',
+  'js/firebase-config.js', 'js/confetti.js', 'js/dadjokes.js',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-180.png',
 ];
 

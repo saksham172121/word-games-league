@@ -1,0 +1,47 @@
+// The dad-joke list for Soukhya's irritating popup ad.
+// Each joke is either a plain string, or ['setup', 'punchline'] (punchline is revealed on tap).
+// Any "hehehe" / "hahaha" / "hihihi" in here is auto-formatted to "hehehehe ~twks" when shown.
+
+export const DAD_JOKES = [
+  ['What\'s the worst thing to do to a blind person in the washroom?', 'Leave the plunger in the pot.'],
+  ['Why do Americans use the metric system?', 'It\'s because they have a feet fetish.'],
+  ['What\'s the difference between jam and jelly?', 'You can\'t jelly a child into a briefcase.'],
+  ['What does my dad have in common with Nemo?', 'They both can\'t be found.'],
+  ['Why did the man miss the funeral?', 'He wasn\'t a mourning person.'],
+  ['When does a joke become a dad joke?', 'When it leaves and never comes back.'],
+  ['What\'s the difference between me and cancer?', 'My dad didn\'t beat cancer.'],
+  ['I started crying when Dad was cutting onions.', 'Onions was such a good dog.'],
+  ['What\'s yellow and can\'t swim?', 'A bus full of children.'],
+  ['What do tofu and a dildo have in common?', 'They\'re both meat substitutes.'],
+  ['I got 9 out of 10 on my driver\'s test.', 'The last guy got out of the way.'],
+  ['Why was the Leaning Tower of Pisa leaning?', 'Because it had more flexibility than the Twin Towers.'],
+  ['What\'s the difference between a slice of pizza and a dead man?', 'A slice of pizza can\'t feed the whole family.'],
+  ['What\'s the difference between a Lamborghini and a dead body?', 'I don\'t have a Lamborghini in my garage.'],
+  ['An apple a day keeps the doctor away.', 'Or at least it does if you throw it hard enough.'],
+  ['What do you call a priest who grew up as an orphan?', 'Father Les.'],
+  ['Why did the kid fall off his cycle?', 'Because someone threw a fridge at him.'],
+  ['My grandpa said this generation relies too much on technology.', 'So I unplugged his life support.'],
+  ['I made a support website for orphans.', 'It doesn\'t have a homepage.'],
+  ['Why don\'t witches wear any panties?', 'So they can grip the broom better.'],
+  ['What is 6.9?', 'A good thing ruined by a period.'],
+  ['Why is it called PMS?', 'Because mad cow disease was already taken.'],
+  ['Why is Putin still invading Ukraine?', 'Because once he puts in, he doesn\'t pull out.'],
+  ['I got arrested by a female police officer. She told me, "Anything you say can and will be held against you."', 'I said: boobs.'],
+  ['What\'s the difference between a pregnant woman and a light bulb?', 'You can\'t unscrew a pregnant woman.'],
+  ['What\'s the difference between a jellybean and a chickpea?', 'I\'ve never had a jellybean on my face.'],
+  ['What\'s the difference between Iron Man and Iron Woman?', 'One is a superhero and one is a command.'],
+  ['What\'s the perk of being an abortion doctor?', 'You never have to buy dog food.'],
+  ['What do sea animals and lesbians have in common?', 'They both choke on plastics.'],
+  ['Have you seen the movie about the little fish with cancer?', 'Finding Chemo.'],
+  ['The other day I saw two mimes having sex.', 'They were doing unspeakable things to each other.'],
+
+  // ----- that's what she said -----
+  ['"It\'s too big. It\'ll never fit."', 'That\'s what she said. 😏'],
+  ['"You\'re doing it wrong. Be gentler."', 'That\'s what she said. 😏'],
+  ['"I can\'t believe how hard that was."', 'That\'s what she said. 😏'],
+  ['"Don\'t stop! I\'m almost there!"', 'That\'s what she said. 😏'],
+  ['"It\'s way bigger than I expected."', 'That\'s what she said. 😏'],
+  ['"Is it in yet?"', 'That\'s what she said. 😏'],
+  ['"That was over way too fast."', 'That\'s what she said. 😏'],
+  ['"Just the tip, I promise."', 'That\'s what she said. 😏'],
+];
