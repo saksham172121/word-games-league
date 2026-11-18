@@ -1,0 +1,18 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // One document per player per day, named "YYYY-MM-DD_player".
+    match /entries/{id} {
+      allow read: if request.auth != null;
+      allow create, update: if request.auth != null
+        && request.resource.data.player in ['saksham', 'soukhya']
+        && request.resource.data.date is string
+        && request.resource.data.date.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && id == request.resource.data.date + '_' + request.resource.data.player
+        && request.resource.data.games is map
+        && request.resource.data.note is string
+        && request.resource.data.note.size() <= 300;
+      allow delete: if false;
+    }
+  }
+}
