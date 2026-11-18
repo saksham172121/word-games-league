@@ -1,15 +1,12 @@
-// Paste your Firebase web-app config here (see SETUP.md, step 3).
-// While apiKey still starts with "PASTE", the app runs in demo mode and stores
-// everything only on this device (localStorage), so you can try it right away.
-//
-// These values are NOT secrets. Firebase web configs are meant to be public;
-// security comes from firestore.rules.
+// Firebase web-app config. These values are NOT secrets: Firebase web configs are
+// public by design. Security comes from firestore.rules.
+// (If apiKey ever starts with "PASTE", the app falls back to local demo mode.)
 
 export const firebaseConfig = {
-  apiKey: 'PASTE_API_KEY',
-  authDomain: 'PASTE_PROJECT_ID.firebaseapp.com',
-  projectId: 'PASTE_PROJECT_ID',
-  storageBucket: 'PASTE_PROJECT_ID.firebasestorage.app',
-  messagingSenderId: 'PASTE_SENDER_ID',
-  appId: 'PASTE_APP_ID',
+  apiKey: 'AIzaSyB1ECvXTu7Xv2OxyQ63aoZ6oh-LnXK6dss',
+  authDomain: 'word-games-league.firebaseapp.com',
+  projectId: 'word-games-league',
+  storageBucket: 'word-games-league.firebasestorage.app',
+  messagingSenderId: '139763142207',
+  appId: '1:139763142207:web:85813488ab83cae632b28a',
 };
