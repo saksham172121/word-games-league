@@ -25,6 +25,9 @@ const S = {
   calMonth: monthKey(todayISO()),
   sheet: null,
   wiz: null,
+  ad: null,
+  secret: null,
+  settings: {},
   loadingMsg: J.randomLoading(),
 };
 
@@ -87,37 +90,55 @@ function render() {
   $app.innerHTML = `
     ${topHTML()}
     ${S.store?.mode === 'local' ? '<div class="banner demo">🧪 Demo mode: scores are saved only on this device. Finish the Firebase setup (SETUP.md) to share with Soukhya.</div>' : ''}
-    ${S.error ? `<div class="banner">😵 Can't reach the server right now. Showing what we have. (${esc(S.error)})</div>` : ''}
+    ${S.error ? `<div class="banner">😵 Can't reach the server right now. Showing what I have. (${esc(S.error)})</div>` : ''}
     ${view}
     ${tabsHTML()}
     ${S.sheet ? sheetHTML() : ''}
     ${S.wiz ? wizHTML() : ''}
+    ${S.secret && S.me === 'saksham' ? secretHTML() : ''}
     ${S.ad ? adHTML() : ''}`;
+  if (S.secret === 'login') document.getElementById('secretpw')?.focus();
 }
 
 // ====================== Soukhya's irritating dad-joke ad ======================
+// Off by default. Saksham flips it from the secret panel (stored in Firestore `settings/dadjokes`).
+// When on, Soukhya's phone rolls the dice once per app launch: at most once every AD_MIN_GAP_DAYS days,
+// with an AD_CHANCE probability, a random 20-90s after opening. Never twice in one session.
+const AD_KEY = 'wgl-ad-last';
+const AD_MIN_GAP_DAYS = 2;
+const AD_CHANCE = 0.35;
 let adTimer = null;
+let adDecided = false;
 let jokeBag = [];
 const rnd = (a, b) => Math.floor(Math.random() * (b - a + 1)) + a;
+const adEnabled = () => S.settings?.dadjokes?.enabled === true;
+const daysSince = (iso) => Math.round((fromISO(todayISO()) - fromISO(iso)) / 86400000);
 function nextJoke() {
   if (!jokeBag.length) jokeBag = DAD_JOKES.map((_, i) => i).sort(() => Math.random() - 0.5);
   const j = DAD_JOKES[jokeBag.pop()];
   return Array.isArray(j) ? { setup: j[0], punch: j[1] } : { setup: j, punch: '' };
 }
-function scheduleAd(ms = rnd(15000, 45000)) {
+function considerAd() {
+  if (adDecided || S.me !== 'soukhya' || gated || !adEnabled() || !DAD_JOKES.length) return;
+  adDecided = true;
+  const last = ls.get(AD_KEY);
+  if (last && daysSince(last) < AD_MIN_GAP_DAYS) return;
+  if (Math.random() > AD_CHANCE) return;
   clearTimeout(adTimer);
-  adTimer = setTimeout(tryAd, ms);
+  adTimer = setTimeout(tryAd, rnd(20000, 90000));
 }
 function tryAd() {
-  if (S.me !== 'soukhya' || !DAD_JOKES.length) return;
-  if (S.wiz || S.sheet || S.ad || document.hidden) return scheduleAd(10000); // never interrupt entering scores
+  if (S.me !== 'soukhya' || !adEnabled()) return;
+  if (S.wiz || S.sheet || S.ad || document.hidden) { adTimer = setTimeout(tryAd, 10000); return; } // never interrupt entering scores
+  ls.set(AD_KEY, todayISO());
   S.ad = { stage: 'ask', joke: nextJoke() };
   render();
 }
 function syncAd() {
   clearTimeout(adTimer);
-  S.ad = null;
-  if (S.me === 'soukhya' && !gated) scheduleAd();
+  if (S.ad && !S.ad.preview) S.ad = null;
+  adDecided = false;
+  considerAd();
 }
 function adHTML() {
   const { stage } = S.ad;
@@ -128,21 +149,71 @@ function adHTML() {
       <div class="row"><button class="btn pink" data-a="adYes">Yes 😩</button><button class="btn ghost" data-a="adNo">No</button></div>`;
   } else if (stage === 'joke') {
     body = `<span class="ad-emo">🥁</span><h2>${esc(joke.setup)}</h2>
-      ${joke.punch ? '<button class="btn lav" data-a="adPunch">Reveal the punchline</button>' : '<button class="btn ghost" data-a="adMore">Another one 😭</button>'}`;
+      ${joke.punch ? '<button class="btn lav" data-a="adPunch">Tell me Already!</button>' : '<button class="btn ghost" data-a="adMore">Another one 😭</button>'}`;
   } else {
     body = `<span class="ad-emo">😏</span><h2>${esc(joke.setup)}</h2><div class="ad-punch">${esc(joke.punch)}</div>
       <div class="row"><button class="btn mint" data-a="adMore">Another one 😭</button><button class="btn ghost" data-a="adClose">I'm done</button></div>`;
   }
   return `<div class="overlay ad-overlay"><div class="ad" data-stop>
-    <span class="ad-tag">AD</span><button class="ad-x" data-a="adNo" aria-label="Close ad">×</button>${body}
+    <button class="ad-x" data-a="adNo" aria-label="Close">×</button>${body}
     <div class="ad-fine">Sponsored by Dad. Closing this ad will not make it stop.</div>
   </div></div>`;
+}
+
+// ====================== Secret panel (Saksham's side only) ======================
+// Tap the 🍬 in the header 5 times, then enter the password. The check is client-side only,
+// so it keeps casual snoopers out but isn't real security.
+const SECRET_HASH = 'c0c78e9316b708ae7622f520332493ae7a8428c82b93d7e998c63b929cd03c7f';
+const sha256 = async (s) => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)))].map((x) => x.toString(16).padStart(2, '0')).join('');
+let logoTaps = [];
+function secretHTML() {
+  if (S.secret === 'login') {
+    return `<div class="overlay"><div class="sheet" data-stop>
+      <button class="close" data-a="secretClose">✕</button>
+      <h2>🤫 Password?</h2>
+      <input id="secretpw" class="pw" type="password" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="shhh…">
+      <div class="gap"></div>
+      <button class="btn pink" data-a="secretUnlock">Unlock</button>
+    </div></div>`;
+  }
+  const on = adEnabled();
+  return `<div class="overlay"><div class="sheet" data-stop>
+    <button class="close" data-a="secretClose">✕</button>
+    <h2>🤫 Secret panel</h2>
+    <div class="card" style="margin-top:12px">
+      <h2>🤡 ${esc(names.soukhya)}'s dad-joke popup</h2>
+      <p class="muted" style="margin-bottom:12px;font-size:15px">When on, it pops up on ${esc(names.soukhya)}'s phone at random: only some launches, and never two days in a row. Currently <b>${on ? 'ON' : 'OFF'}</b>.</p>
+      <button class="btn ${on ? 'mint' : 'ghost'}" data-a="secretToggle">${on ? '✅ ON (tap to turn off)' : '⛔ OFF (tap to turn on)'}</button>
+      <div class="gap"></div>
+      <button class="btn ghost small" data-a="secretPreview">👀 Preview it on my phone</button>
+    </div>
+  </div></div>`;
+}
+async function unlockSecret() {
+  const pw = (document.getElementById('secretpw')?.value || '').trim().toLowerCase();
+  let ok = false;
+  try { ok = (await sha256(pw)) === SECRET_HASH; } catch { ok = false; }
+  if (ok) { S.secret = 'panel'; render(); } else toast('Nope. 🙅');
+}
+async function toggleAd() {
+  const next = !adEnabled();
+  const prev = S.settings.dadjokes;
+  S.settings.dadjokes = { enabled: next };
+  render();
+  try {
+    await S.store.setSetting('dadjokes', { enabled: next });
+    toast(next ? 'Popup is ON for Soukhya 😈' : 'Popup is OFF 🕊️');
+  } catch (err) {
+    S.settings.dadjokes = prev;
+    render();
+    toast('Could not save: ' + (err.code || err.message) + '. Publish the new Firebase rules!');
+  }
 }
 
 function topHTML() {
   const p = playerById(S.me);
   return `<header class="top">
-    <div class="logo"><span class="ico">🍬</span><div>Word Games League<small>${esc(names.saksham)} vs ${esc(names.soukhya)}</small></div></div>
+    <div class="logo"><span class="ico" data-a="logoTap">🍬</span><div>Word Games League<small>${esc(names.saksham)} vs ${esc(names.soukhya)}</small></div></div>
     <button class="me" data-a="switchWho" style="background:${p.color}" aria-label="You are ${esc(p.name)}. Tap to switch.">${p.short}</button>
   </header>`;
 }
@@ -212,10 +283,11 @@ function todayHTML() {
   const pcards = PLAYERS.map((p) => {
     const e = d?.entries[p.id];
     const w = d?.result.status === 'complete' && d.result.winner === p.id;
-    return `<div class="pcard ${p.id}"><div class="avatar" style="background:${p.color}">${p.short}</div><div class="pname">${esc(p.name)}${w ? ' 👑' : ''}</div>${nickHTML(p.id)}<div class="pstat">${e ? '✅ Posted' : '⏳ Not yet'}</div></div>`;
+    return `<div class="pcard ${p.id}"><div class="avatar" style="background:${p.color}">${p.short}</div><div class="pname">${esc(p.name)}${w ? ' 👑' : ''}</div><div class="pstat">${e ? '✅ Posted' : '⏳ Not yet'}</div></div>`;
   }).join('');
   return `
     <h2 style="font-size:26px;margin:0 2px 2px">${esc(S.greet)}</h2>
+    ${S.me === 'soukhya' ? nickHTML('soukhya').replace('class="nick"', 'class="nick top-nick"') : ''}
     <p class="muted" style="margin:0 2px 14px">${esc(prettyDate(date))}</p>
     <button class="btn ${mine ? 'ghost' : 'pink'}" data-a="startWiz" data-v="${date}" style="margin-bottom:18px">${mine ? '✏️ Edit my scores' : '🎮 Log my scores'}</button>
     <div class="versus">${pcards}</div>
@@ -517,9 +589,22 @@ document.addEventListener('click', (ev) => {
     }
     case 'adYes': S.ad.stage = 'joke'; break;
     case 'adPunch': S.ad.stage = 'punch'; break;
-    case 'adMore': S.ad = { stage: 'joke', joke: nextJoke() }; break;
-    case 'adNo': S.ad = null; scheduleAd(rnd(60000, 120000)); toast('Fine. We\'ll ask again. 😈'); break; // "No" only makes it come back sooner
-    case 'adClose': S.ad = null; scheduleAd(rnd(180000, 360000)); break;
+    case 'adMore': S.ad = { stage: 'joke', joke: nextJoke(), preview: S.ad.preview }; break;
+    case 'adNo': if (!S.ad.preview) toast('Fine. I\'ll ask again. 😈'); S.ad = null; break;
+    case 'adClose': S.ad = null; break;
+    case 'logoTap': {
+      if (S.me !== 'saksham') return;
+      const now = Date.now();
+      logoTaps = [...logoTaps.filter((t) => now - t < 2500), now];
+      if (logoTaps.length < 5) return;
+      logoTaps = [];
+      S.secret = 'login';
+      break;
+    }
+    case 'secretUnlock': unlockSecret(); return;
+    case 'secretClose': S.secret = null; break;
+    case 'secretToggle': toggleAd(); return;
+    case 'secretPreview': S.ad = { stage: 'ask', joke: nextJoke(), preview: true }; break;
     case 'tab': S.view = v; scrollTo(0, 0); break;
     case 'period': S.period = v; break;
     case 'cal': S.calMonth = shiftMonth(S.calMonth, Number(v)); break;
@@ -548,6 +633,10 @@ document.addEventListener('click', (ev) => {
   render();
 });
 
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && e.target.id === 'secretpw') unlockSecret();
+});
+
 document.addEventListener('input', (e) => {
   if (e.target.id === 'note' && S.wiz) S.wiz.note = e.target.value;
 });
@@ -559,8 +648,14 @@ function onData(entries) {
   S.loaded = true;
   S.error = null;
   // Don't blow away what the user is typing.
-  if (document.activeElement?.id === 'note') return;
+  if (['note', 'secretpw'].includes(document.activeElement?.id)) return;
   render();
+}
+
+function onSettings(map) {
+  S.settings = map || {};
+  if (!adEnabled()) { clearTimeout(adTimer); if (S.ad && !S.ad.preview) S.ad = null; } else considerAd();
+  if (S.loaded && document.activeElement?.id !== 'secretpw') render();
 }
 
 function seedDemo(store) {
@@ -601,12 +696,13 @@ async function main() {
   registerSW(); // also needed in the browser so Android treats the site as installable
   if (gated) { render(); return; } // browser tab: show only the "add to home screen" page
   render();
-  syncAd();
   const loadTimer = setInterval(() => { if (S.loaded) return clearInterval(loadTimer); S.loadingMsg = J.randomLoading(); render(); }, 1800);
   try {
     S.store = await createStore();
     if (S.store.mode === 'local' && new URLSearchParams(location.search).has('demo')) seedDemo(S.store);
     await S.store.subscribe(onData, (err) => { S.error = err.code || err.message; S.loaded = true; render(); });
+    // Settings are optional: if they can't be read (e.g. rules not updated yet) everything stays "off".
+    S.store.subscribeSettings?.(onSettings, (err) => console.warn('settings unavailable', err.code || err.message));
   } catch (err) {
     console.error(err);
     S.error = err.code || err.message;

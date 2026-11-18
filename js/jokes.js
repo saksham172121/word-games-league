@@ -15,21 +15,20 @@ const WORDLE = {
   2: [
     '2/6. Unhinged talent. You are making {them} feel things. 😤',
     'Two guesses?! Who raised you, a dictionary? 📖',
-    'Two! Show-off behaviour, and honestly, we respect it.',
+    'Two! Show-off behaviour, and honestly, I respect it.',
   ],
   3: [
     '3/6. Clean. Confident. Slightly smug. Chef\'s kiss. 😌💋',
-    'A three! Big brain, small tips, huge ego. We love to see it.',
+    'A three! Big brain, small tips, huge ego. I love to see it.',
     'Three guesses. Your brain is doing yoga today. 🧘',
   ],
   4: [
-    'Four. Not too big, not too small, just right. ~twks 😏',
     '4/6. The human average. Beautifully, boringly normal. 🧍',
     'A solid 4. Not a legend, not a disaster, just vibes. ✌️',
     'Four. Respectable. Nobody will write songs about it, but still.',
   ],
   5: [
-    '5/6… sweating a little, are we? 😅',
+    '5/6… sweating a little, are you? 😅',
     'Five guesses. You made it dramatic for no reason. Entertainment though.',
     '5/6. The letters fought back and you barely won. 🥊',
   ],
@@ -37,14 +36,12 @@ const WORDLE = {
     '6/6. Last life, final boss, cinematic. Heart rate: 140. Dignity: gone. 🎬',
     'SIX. You clutched it by one inch. Be proud. Be very quiet about it.',
     'You won on the last guess. Technically a win. Spiritually a hostage situation. 😮‍💨',
-    'It took six tries to get it in, but you finished. ~twks 😏',
   ],
   X: [
-    'X. 💀 We hold a moment of silence 🕯️ and then we laugh.',
+    'X. 💀 I hold a moment of silence 🕯️ and then I laugh.',
     'Failed. The word was probably "EASY" and that is the joke.',
     'X/6. The dictionary has filed a restraining order. 📜',
     'Wordle Defeated You. Even the cursor felt bad. 😭',
-    'X. It just would not go in. ~twks 😏',
   ],
 };
 
@@ -53,7 +50,7 @@ const WAFFLE = {
   4: ['4 stars. Crispy, golden, only slightly smug.', 'Four! One swap shy of perfection. Just frame it as "modesty".'],
   3: ['3 stars. A respectable, fluffy, mid waffle. 🧇', 'Three stars. The waffle is fine. YOU are fine. Everyone is fine.'],
   2: ['2 stars. This waffle needs a little love. And maybe syrup.', 'Two stars. Slightly soggy. Moral support deployed. 🫶'],
-  1: ['1 star. We do not speak of this waffle.', 'One star. The waffle iron has filed a complaint.'],
+  1: ['1 star. I do not speak of this waffle.', 'One star. The waffle iron has filed a complaint.'],
   0: ['0 stars. Burnt. 🔥 Straight to the bin, eat cereal instead.', 'Zero. The waffle did not survive. Neither did your pride. 🪦'],
 };
 
@@ -77,7 +74,7 @@ const NUM = {
 const ZERO = ['Zero. A bold artistic choice. 🎨', 'Zero! The purest form of score. Also the saddest. 🥲'];
 
 const SKIP = [
-  'Skipped. Coward. 🐔 (we love you though)',
+  'Skipped. Coward. 🐔 (I love you though)',
   'No play, no pain. Smart or scared?',
   'Skipped it. The game is crying but you will never know.',
   'Okay, quitter. The league remembers. 👀',
@@ -99,7 +96,7 @@ export const reactSkip = (vars) => say(SKIP, vars);
 const DAY_WIN = [
   '{w} takes the day {a}–{b}! 👑 Absolute legend. {l}, was that… a tear? 😭',
   '{w} wins {a}–{b}. History books are being updated. {l} is being gently escorted off the podium. 🏆',
-  '{a}–{b} to {w}! Flawless, humble, extremely talented. (We are not biased.) {l}: tomorrow, maybe. 🫡',
+  '{a}–{b} to {w}! Flawless, humble, extremely talented. (I am not biased.) {l}: tomorrow, maybe. 🫡',
   '{w} 1, {l} 0. Today the universe sided with {w}. Blame the universe, {l}. 🌌',
   'Standing ovation for {w}! 👏 {l} has been advised to hydrate and reflect.',
   '{w} ate that. {l} was the plate. 🍽️ ({a}–{b})',

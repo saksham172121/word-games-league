@@ -41,6 +41,21 @@ async function firebaseStore() {
         (err) => onError?.(err),
       );
     },
+    async subscribeSettings(onData, onError) {
+      try { await ready; } catch (e) { onError?.(e); return () => {}; }
+      return fs.onSnapshot(
+        fs.collection(db, 'settings'),
+        (snap) => onData(Object.fromEntries(snap.docs.map((d) => [d.id, d.data()]))),
+        (err) => onError?.(err),
+      );
+    },
+    async setSetting(key, value) {
+      await ready;
+      await Promise.race([
+        fs.setDoc(fs.doc(db, 'settings', key), value),
+        new Promise((_, rej) => setTimeout(() => rej(Object.assign(new Error('timeout'), { code: 'timeout' })), 8000)),
+      ]);
+    },
     async save(entry) {
       await ready;
       const ref = fs.doc(db, 'entries', entryId(entry.date, entry.player));
@@ -82,6 +97,19 @@ function localStore() {
       localStorage.setItem(KEY, JSON.stringify(all));
       emit();
       return 'saved';
+    },
+    async subscribeSettings(onData) {
+      const read = () => { try { return JSON.parse(localStorage.getItem('wgl-settings-v1') || '{}'); } catch { return {}; } };
+      listeners.add(() => onData(read()));
+      onData(read());
+      return () => {};
+    },
+    async setSetting(key, value) {
+      let cur = {};
+      try { cur = JSON.parse(localStorage.getItem('wgl-settings-v1') || '{}'); } catch {}
+      cur[key] = value;
+      localStorage.setItem('wgl-settings-v1', JSON.stringify(cur));
+      emit();
     },
     // Test helper used by ?demo=1
     _replaceAll(entries) {

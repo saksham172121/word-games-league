@@ -35,13 +35,4 @@ export const DAD_JOKES = [
   ['Have you seen the movie about the little fish with cancer?', 'Finding Chemo.'],
   ['The other day I saw two mimes having sex.', 'They were doing unspeakable things to each other.'],
 
-  // ----- that's what she said -----
-  ['"It\'s too big. It\'ll never fit."', 'That\'s what she said. 😏'],
-  ['"You\'re doing it wrong. Be gentler."', 'That\'s what she said. 😏'],
-  ['"I can\'t believe how hard that was."', 'That\'s what she said. 😏'],
-  ['"Don\'t stop! I\'m almost there!"', 'That\'s what she said. 😏'],
-  ['"It\'s way bigger than I expected."', 'That\'s what she said. 😏'],
-  ['"Is it in yet?"', 'That\'s what she said. 😏'],
-  ['"That was over way too fast."', 'That\'s what she said. 😏'],
-  ['"Just the tip, I promise."', 'That\'s what she said. 😏'],
 ];
