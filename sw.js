@@ -1,6 +1,6 @@
 // Tiny service worker: makes the app open instantly and work offline.
 // Bump VERSION whenever you change files so phones pick up the update.
-const VERSION = '1.9.0';
+const VERSION = '1.9.1';
 const CACHE = `wgl-${VERSION}`;
 const SHELL = [
   './', 'index.html', 'manifest.webmanifest', 'css/style.css',
