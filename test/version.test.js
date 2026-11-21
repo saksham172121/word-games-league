@@ -11,8 +11,8 @@ test('version: semver, and js/version.js matches sw.js', () => {
   assert.ok(sw.includes("'js/version.js'"), 'version.js must be precached');
 });
 
-test('timeNotif: morning only (5:00-11:59)', () => {
-  assert.match(timeNotif(5).title, /TOP OF THE MORNING TO YOU SAILOR/);
-  assert.match(timeNotif(11).title, /TOP OF THE MORNING TO YOU SAILOR/);
-  for (const h of [0, 3, 4, 12, 15, 21, 23]) assert.equal(timeNotif(h), null, `hour ${h}`);
+test('timeNotif: morning only (5:00-11:59), personal per player', () => {
+  assert.match(timeNotif(5, 'saksham').title, /TOP OF THE MORNING TO YOU SAILOR/);
+  assert.match(timeNotif(11, 'soukhya').title, /TOP OF THE MORNING MADAM/);
+  for (const h of [0, 3, 4, 12, 15, 21, 23]) assert.equal(timeNotif(h, 'saksham'), null, `hour ${h}`);
 });

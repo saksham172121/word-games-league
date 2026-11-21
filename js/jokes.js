@@ -154,10 +154,12 @@ export function streakLine(name, n) {
   return `${name}: streak is zero. Reset. Breathe. 🧘`;
 }
 
-/** Time-of-day notification shown when the app is opened. Returns null outside the morning (5:00-11:59). */
-export function timeNotif(hour) {
+/** Time-of-day banner shown when the app is opened. Returns null outside the morning (5:00-11:59). */
+export function timeNotif(hour, player) {
   if (hour >= 5 && hour < 12) {
-    return { emoji: '☀️', title: 'TOP OF THE MORNING TO YOU SAILOR', sub: 'Wordle won\'t play itself. 🧇' };
+    return player === 'soukhya'
+      ? { emoji: '☀️', title: 'TOP OF THE MORNING MADAM 🫡', sub: 'The Custodian of Egypt has puzzles to conquer. 🏺' }
+      : { emoji: '☀️', title: 'TOP OF THE MORNING TO YOU SAILOR ⛵', sub: 'Wordle won\'t play itself. 🧇' };
   }
   return null;
 }

@@ -53,12 +53,18 @@ export async function disablePush(player) {
   await sub.unsubscribe();
 }
 
-/** Called on every app launch: keeps this phone's subscription fresh on the Worker (it expires after 120 idle days). */
+/** Called on app launch: re-registers this phone's subscription at most once a day (it expires after 120 idle days). */
 export async function refreshPush(player) {
   if (!pushConfigured() || !pushSupported() || Notification.permission !== 'granted') return;
+  const KEY = 'wgl-push-refreshed';
+  const today = new Date().toDateString();
+  try { if (localStorage.getItem(KEY) === today) return; } catch { /* ignore */ }
   try {
     const sub = await (await registration()).pushManager.getSubscription();
-    if (sub) await post('/subscribe', { player, subscription: sub.toJSON() });
+    if (sub) {
+      await post('/subscribe', { player, subscription: sub.toJSON() });
+      try { localStorage.setItem(KEY, today); } catch { /* ignore */ }
+    }
   } catch { /* offline etc. */ }
 }
 

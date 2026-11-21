@@ -163,7 +163,7 @@ let morningChecked = false;
 function maybeMorning() {
   if (morningChecked || !S.me || !S.loaded || gated) return;
   morningChecked = true;
-  const n = J.timeNotif(new Date().getHours());
+  const n = J.timeNotif(new Date().getHours(), S.me);
   if (!n || ls.get('wgl-morning') === todayISO()) return;
   ls.set('wgl-morning', todayISO());
   setTimeout(() => showNotif(n), 700);
