@@ -37,5 +37,28 @@ service cloud.firestore {
               && request.resource.data.evening is bool));
       allow delete: if false;
     }
+
+    // Titles/nicknames: each player writes the OTHER player's title (doc id = whose title it is).
+    match /nicknames/{id} {
+      allow read: if request.auth != null;
+      allow create, update: if request.auth != null
+        && id in ['saksham', 'soukhya']
+        && request.resource.data.nick is string
+        && request.resource.data.nick.size() <= 120
+        && request.resource.data.by in ['saksham', 'soukhya']
+        && request.resource.data.by != id;
+      allow delete: if false;
+    }
+
+    // Which app version each phone is running (shown in Saksham's secret panel) + one-time scroll flag.
+    match /devices/{id} {
+      allow read: if request.auth != null;
+      allow create, update: if request.auth != null
+        && id in ['saksham', 'soukhya']
+        && request.resource.data.version is string
+        && request.resource.data.version.size() <= 20
+        && request.resource.data.lastSeen is number;
+      allow delete: if false;
+    }
   }
 }

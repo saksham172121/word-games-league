@@ -5,7 +5,7 @@ import * as J from './jokes.js';
 import { createStore } from './store.js';
 import { confetti } from './confetti.js';
 import { DAD_JOKES } from './dadjokes.js';
-import { APP_VERSION } from './version.js';
+import { APP_VERSION, MIN_PUSH_VERSION, compareVersions } from './version.js';
 import { pushConfigured, pushState, enablePush, disablePush, refreshPush, notifyPosted, sendTest } from './push.js';
 
 const $app = document.getElementById('app');
@@ -30,13 +30,23 @@ const S = {
   ad: null,
   secret: null,
   settings: {},
+  nicks: {},
+  devices: {},
+  devicesReady: false,
+  latestChecked: false,
+  scroll: null,
+  scrollPreview: false,
+  nickDraft: null,
   push: { supported: false, permission: 'default', subscribed: false, busy: false },
   loadingMsg: J.randomLoading(),
 };
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const vars = () => ({ me: names[S.me], them: names[otherPlayer(S.me)?.id] });
-const nickHTML = (id) => (playerById(id)?.nick ? `<div class="nick">${esc(playerById(id).nick)}</div>` : '');
+// Titles are editable by the *other* player (stored in Firestore `nicknames`); falls back to the built-in default.
+const nickOf = (id) => (typeof S.nicks?.[id]?.nick === 'string' ? S.nicks[id].nick : playerById(id)?.nick || '');
+const nickHTML = (id) => { const n = nickOf(id); return n ? `<div class="nick">${esc(n)}</div>` : ''; };
+const TYPING_IDS = ['note', 'secretpw', 'adreview', 'nickinput'];
 const standalone = () => navigator.standalone === true || matchMedia('(display-mode: standalone)').matches;
 // The app only runs when launched from the home screen. Local dev (localhost) is exempt,
 // unless you add ?install=1 to preview the install screen.
@@ -100,7 +110,8 @@ function render() {
     ${S.sheet ? sheetHTML() : ''}
     ${S.wiz ? wizHTML() : ''}
     ${S.secret && S.me === 'saksham' ? secretHTML() : ''}
-    ${S.ad ? adHTML() : ''}`;
+    ${S.ad ? adHTML() : ''}
+    ${S.scroll ? scrollHTML() : ''}`;
   if (S.secret === 'login') document.getElementById('secretpw')?.focus();
 }
 
@@ -151,9 +162,98 @@ async function checkLatest() {
     const v = (await res.text()).match(/const VERSION = '([^']+)'/)?.[1];
     if (v && v !== S.latest) {
       S.latest = v;
-      if (S.loaded && S.me === 'saksham' && !['note', 'secretpw', 'adreview'].includes(document.activeElement?.id)) render();
+      if (S.loaded && S.me === 'saksham' && !TYPING_IDS.includes(document.activeElement?.id)) render();
     }
   } catch { /* offline: just show the running version */ }
+  S.latestChecked = true;
+  maybeScroll();
+}
+
+// ====================== Titles (nicknames) the OTHER player writes ======================
+function titleCardHTML() {
+  const other = otherPlayer(S.me);
+  const value = S.nickDraft ?? nickOf(other.id);
+  return `<div class="card"><h2>👑 Bestow a title upon ${esc(other.name)}</h2>
+    <p class="muted" style="margin-bottom:10px;font-size:15px">Give ${esc(other.name)} a ridiculous title. It shows under their name, and yours is written by them.</p>
+    <textarea id="nickinput" rows="2" maxlength="120" placeholder="e.g. Grand Vizier of the Waffle Iron">${esc(value)}</textarea>
+    <div class="gap"></div>
+    <div class="row"><button class="btn pink small" data-a="saveNick">Bestow 👑</button><button class="btn ghost small" data-a="clearNick">Remove title</button></div>
+  </div>`;
+}
+async function saveNick(clear) {
+  const other = otherPlayer(S.me);
+  const nick = clear ? '' : (document.getElementById('nickinput')?.value ?? S.nickDraft ?? '').trim().slice(0, 120);
+  const prev = S.nicks[other.id];
+  S.nicks[other.id] = { nick, by: S.me, at: Date.now() };
+  S.nickDraft = null;
+  render();
+  try {
+    await S.store.setMap('nicknames', other.id, { nick, by: S.me, at: Date.now() });
+    toast(clear ? 'Title removed' : 'Title bestowed 👑');
+  } catch (err) {
+    if (prev) S.nicks[other.id] = prev; else delete S.nicks[other.id];
+    render();
+    toast('Could not save: ' + (err.code || err.message) + '. Publish the new Firebase rules!');
+  }
+}
+
+// ====================== Device report (version) ======================
+function reportDevice() {
+  if (reportDevice.done || !S.me || !S.store?.setMap) return;
+  reportDevice.done = true;
+  S.store.setMap('devices', S.me, { version: APP_VERSION, lastSeen: Date.now() }).catch((e) => console.warn('device report failed', e.code || e.message));
+}
+function onDevices(map) {
+  S.devices = map || {};
+  S.devicesReady = true;
+  maybeScroll();
+  if (S.loaded && S.secret === 'panel' && !TYPING_IDS.includes(document.activeElement?.id)) render();
+}
+
+// ====================== Soukhya's one-time parchment scroll ======================
+// Shown once on her launch. If her app is older than the server's version (or older than push support),
+// she gets the "update help" scroll instead and sees the real one on a later launch.
+function maybeScroll() {
+  if (S.scroll || S.me !== 'soukhya' || gated || !S.loaded || S.wiz || !S.latestChecked || !S.devicesReady) return;
+  if (S.devices.soukhya?.scrollSeen === true || ls.get('wgl-scroll-seen') === '1') return;
+  const stale = compareVersions(APP_VERSION, MIN_PUSH_VERSION) < 0 || (S.latest && compareVersions(APP_VERSION, S.latest) < 0);
+  S.scrollPreview = false;
+  S.scroll = stale ? 'update' : 'guide';
+  render();
+}
+function markScrollSeen() {
+  ls.set('wgl-scroll-seen', '1');
+  S.store?.setMap?.('devices', 'soukhya', { version: APP_VERSION, lastSeen: Date.now(), scrollSeen: true }).catch(() => {});
+}
+function scrollHTML() {
+  const update = S.scroll === 'update';
+  const inner = update
+    ? `<h1 class="sc-title">Alas, Noble Traveller!</h1>
+      <p class="sc-hail">Hail, <b>${esc(names.soukhya)}</b>!</p>
+      <p>Thy app doth run an elder version (<b>v${esc(APP_VERSION)}</b>), whilst the realm hath advanced to <b>v${esc(S.latest || MIN_PUSH_VERSION)}</b>. Without the new version, the notifications cannot reach thee. 📜</p>
+      <ol class="sc-steps">
+        <li>Swipe this app away entirely, then open it anew from thy home screen. Do this twice, shouldst the first attempt fail.</li>
+        <li>If it persisteth in its stubbornness, remove the icon from thy home screen, open the link in <b>Safari</b>, press <b>Share ⬆︎</b> then <b>Add to Home Screen</b>, and choose thy name once more.</li>
+        <li>Open the app and look for this scroll again! It shall return once thou art of the right version. 🏰</li>
+      </ol>
+      <button class="wax-btn" data-a="scrollDone">🫡 I have done so</button>`
+    : `<h1 class="sc-title">Hear Ye, Hear Ye!</h1>
+      <p class="sc-hail">Hail, noble <b>${esc(names.soukhya)}</b>,<br><i>${esc((nickOf('soukhya') || '').replace(/^Soukhya,?\s*/i, '') || 'Keeper of the Realm')}!</i></p>
+      <p>Thy humble servant <b>${esc(names.saksham)}</b> hath, at long last, bestowed upon thee the gift of <b>Notifications</b>! 🔔 Verily, the realm shall ping thee when thy rival doth post, and bringeth thee tidings at morn and at noon.</p>
+      <ol class="sc-steps">
+        <li>Betake thyself to the <b>🎉 Fun</b> section at the foot of this realm.</li>
+        <li>Press the button that doth read <b>“Turn on notifications”</b>, and grant thy leave when thy device doth ask.</li>
+        <li>Press <b>“Send me a test”</b> once, and behold! A missive shall appear upon thy screen. 📨</li>
+      </ol>
+      <p><b>A second boon!</b> 👑 Thou mayest now bestow a title upon thy rival, and thy rival upon thee. In the <b>Fun</b> section, seek the card <i>“Bestow a title”</i> and write what name thou wilt, the grander or the fouler the better. Beware: thine own title is written by thy rival's hand!</p>
+      <p class="sc-sign">Sealed with wax,<br>— ${esc(names.saksham)} 🪶</p>
+      <button class="wax-btn" data-a="scrollGo">🎉 To the Fun section!</button>
+      <button class="sc-later" data-a="scrollDone">Mayhaps later</button>`;
+  return `<div class="scroll-overlay"><div class="scroll">
+    <div class="scroll-rod"></div>
+    <div class="scroll-body">${inner}</div>
+    <div class="scroll-rod"></div>
+  </div></div>`;
 }
 
 // ====================== Morning notification ======================
@@ -287,6 +387,20 @@ function secretHTML() {
       }).join('')}
     </div>
     <div class="card">
+      <h2>📜 ${esc(names.soukhya)}'s scroll</h2>
+      <p class="muted" style="margin-bottom:10px;font-size:15px">Shown once, on her next launch (or an "update help" scroll if her app is behind). Status: <b>${S.devices.soukhya?.scrollSeen ? 'seen ✅' : 'not seen yet ⏳'}</b></p>
+      <div class="row"><button class="btn ghost small" data-a="scrollPreview" data-v="guide">Preview scroll</button><button class="btn ghost small" data-a="scrollPreview" data-v="update">Preview update help</button></div>
+    </div>
+    <div class="card">
+      <h2>📱 Versions in the wild <span class="sticker">server: v${esc(S.latest || APP_VERSION)}</span></h2>
+      ${PLAYERS.map((p) => {
+        const d = S.devices[p.id];
+        if (!d) return `<div class="fact"><span class="e">${p.id === 'saksham' ? '🩷' : '💚'}</span><div><b>${esc(p.name)}</b><div class="muted" style="font-size:14px">No report yet. Not on a version that reports in.</div></div></div>`;
+        const behind = S.latest && compareVersions(d.version || '0.0.0', S.latest) < 0;
+        return `<div class="fact"><span class="e">${p.id === 'saksham' ? '🩷' : '💚'}</span><div><b>${esc(p.name)}</b>: v${esc(d.version || '?')} ${behind ? '⚠️ behind' : '✅'}<div class="muted" style="font-size:14px">Last opened ${esc(new Date(d.lastSeen || 0).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }))}</div></div></div>`;
+      }).join('')}
+    </div>
+    <div class="card">
       <h2>💬 ${esc(names.soukhya)}'s reviews <span class="sticker">${(S.reviews || []).length}</span></h2>
       ${(S.reviews || []).length ? S.reviews.map((r) => `<div class="review"><div class="muted" style="font-size:13px">${esc(r.joke)}</div><div class="speech">${esc(r.text)}</div><div class="muted" style="font-size:11px;margin-top:2px">${esc(new Date(r.at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }))}</div></div>`).join('') : '<p class="muted" style="font-size:15px">No reviews yet. When she types a review after a joke, it shows up here.</p>'}
     </div>
@@ -384,7 +498,7 @@ function dayScoresHTML(date) {
     return `<div class="gr">${cell(ea, A)}<div class="gname"><span>${g.emoji}</span>${g.name}</div>${cell(eb, B)}</div>`;
   }).join('');
   const notes = PLAYERS.map((p) => d.entries[p.id]?.note?.trim() ? `<div class="speech"><b>${esc(p.name)}:</b> ${esc(d.entries[p.id].note)}</div>` : '').join('');
-  return `<div class="names"><div>${esc(A.name)}</div><div></div><div>${esc(B.name)}${nickHTML(B.id)}</div></div>
+  return `<div class="names"><div>${esc(A.name)}${nickHTML(A.id)}</div><div></div><div>${esc(B.name)}${nickHTML(B.id)}</div></div>
     <div class="score-list">${rows || '<p class="muted" style="text-align:center">Nobody has played a game yet.</p>'}</div>${notes}`;
 }
 
@@ -414,7 +528,7 @@ function todayHTML() {
   }).join('');
   return `
     <h2 style="font-size:26px;margin:0 2px 2px">${esc(S.greet)}</h2>
-    ${S.me === 'soukhya' ? nickHTML('soukhya').replace('class="nick"', 'class="nick top-nick"') : ''}
+    ${nickHTML(S.me).replace('class="nick"', 'class="nick top-nick"')}
     <p class="muted" style="margin:0 2px 14px">${esc(prettyDate(date))}</p>
     <button class="btn ${mine ? 'ghost' : 'pink'}" data-a="startWiz" data-v="${date}" style="margin-bottom:18px">${mine ? '✏️ Edit my scores' : '🎮 Log my scores'}</button>
     <div class="versus">${pcards}</div>
@@ -445,7 +559,7 @@ function boardHTML() {
     <div class="card">
       <h2>Days won</h2>
       <div class="bigscore">
-        <div><div class="n" style="color:#d6347c">${a.dayWins}</div><div class="l">${esc(names.saksham)}</div></div>
+        <div><div class="n" style="color:#d6347c">${a.dayWins}</div><div class="l">${esc(names.saksham)}</div>${nickHTML('saksham')}</div>
         <div class="vs">vs</div>
         <div><div class="n" style="color:#1a9a70">${b.dayWins}</div><div class="l">${esc(names.soukhya)}</div>${nickHTML('soukhya')}</div>
       </div>
@@ -529,6 +643,7 @@ function funHTML() {
     <div class="badges">${badges[p.id].map((b) => `<div class="badge ${b.earned ? '' : 'locked'}" title="${esc(b.desc)}"><span class="be">${b.earned ? b.emoji : '🔒'}</span>${esc(b.name)}<div class="muted" style="font-weight:400;font-size:11px;margin-top:2px">${esc(b.desc)}</div></div>`).join('')}</div></div>`;
   return `
     ${pushCardHTML()}
+    ${titleCardHTML()}
     <div class="card"><h2>📣 Brag to the group chat</h2><p class="muted" style="margin-bottom:12px">Copies a scoreboard card you can paste anywhere.</p><button class="btn lav" data-a="share">Share the scoreboard</button></div>
     <div class="card"><h2>🧠 Rivalry facts</h2>${facts}</div>
     ${PLAYERS.map(bcard).join('')}`;
@@ -710,7 +825,7 @@ document.addEventListener('click', (ev) => {
   if (el.classList.contains('overlay') && ev.target.closest('.sheet')) return;
   const a = el.dataset.a, v = el.dataset.v;
   switch (a) {
-    case 'who': S.me = v; ls.set('wgl-me', v); S.greet = null; syncAd(); maybeMorning(); onData.pushed = false; if (S.loaded) { onData.pushed = true; loadPush(); refreshPush(S.me); } break;
+    case 'who': S.me = v; ls.set('wgl-me', v); S.greet = null; syncAd(); maybeMorning(); reportDevice.done = false; reportDevice(); maybeScroll(); onData.pushed = false; if (S.loaded) { onData.pushed = true; loadPush(); refreshPush(S.me); } break;
     case 'switchWho': {
       const other = otherPlayer(S.me);
       if (!confirm(`Switch to ${other.name}?`)) return;
@@ -737,6 +852,11 @@ document.addEventListener('click', (ev) => {
     case 'pushOn': pushAction('on'); return;
     case 'pushOff': pushAction('off'); return;
     case 'pushTest': pushAction('test'); return;
+    case 'saveNick': saveNick(false); return;
+    case 'clearNick': saveNick(true); return;
+    case 'scrollDone': if (S.scroll === 'guide' && !S.scrollPreview) markScrollSeen(); S.scroll = null; break;
+    case 'scrollGo': if (!S.scrollPreview) markScrollSeen(); S.scroll = null; S.view = 'fun'; scrollTo(0, 0); break;
+    case 'scrollPreview': S.scrollPreview = true; S.scroll = v; break;
     case 'secretPreview': S.ad = { stage: 'ask', joke: nextJoke(), preview: true }; break;
     case 'tab': S.view = v; scrollTo(0, 0); break;
     case 'period': S.period = v; break;
@@ -773,6 +893,7 @@ document.addEventListener('keydown', (e) => {
 document.addEventListener('input', (e) => {
   if (e.target.id === 'note' && S.wiz) S.wiz.note = e.target.value;
   if (e.target.id === 'adreview' && S.ad) S.ad.review = e.target.value;
+  if (e.target.id === 'nickinput') S.nickDraft = e.target.value;
 });
 
 // ====================== Boot ======================
@@ -782,16 +903,18 @@ function onData(entries) {
   S.loaded = true;
   S.error = null;
   // Don't blow away what the user is typing.
-  if (['note', 'secretpw', 'adreview'].includes(document.activeElement?.id)) return;
+  if (TYPING_IDS.includes(document.activeElement?.id)) return;
   render();
   maybeMorning();
+  reportDevice();
+  maybeScroll();
   if (!onData.pushed && S.me) { onData.pushed = true; loadPush(); refreshPush(S.me); }
 }
 
 function onSettings(map) {
   S.settings = map || {};
   if (!adEnabled()) { clearTimeout(adTimer); if (S.ad && !S.ad.preview) S.ad = null; } else considerAd();
-  if (S.loaded && !['secretpw', 'adreview'].includes(document.activeElement?.id)) render();
+  if (S.loaded && !TYPING_IDS.includes(document.activeElement?.id)) render();
 }
 
 function seedDemo(store) {
@@ -840,6 +963,9 @@ async function main() {
     if (S.store.mode === 'local' && new URLSearchParams(location.search).has('demo')) seedDemo(S.store);
     await S.store.subscribe(onData, (err) => { S.error = err.code || err.message; S.loaded = true; render(); });
     // Settings are optional: if they can't be read (e.g. rules not updated yet) everything stays "off".
+    S.store.subscribeMap?.('nicknames', (map) => { S.nicks = map || {}; if (S.loaded && !TYPING_IDS.includes(document.activeElement?.id)) render(); }, (err) => console.warn('titles unavailable', err.code || err.message));
+    S.store.subscribeMap?.('devices', onDevices, (err) => { console.warn('devices unavailable', err.code || err.message); onDevices({}); });
+    setTimeout(() => { if (!S.devicesReady) onDevices(S.devices); }, 4000); // don't wait forever on a slow or blocked read
     S.store.subscribeSettings?.(onSettings, (err) => console.warn('settings unavailable', err.code || err.message));
   } catch (err) {
     console.error(err);

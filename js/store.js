@@ -49,6 +49,22 @@ async function firebaseStore() {
         (err) => onError?.(err),
       );
     },
+    // Small keyed collections ('nicknames', 'devices'): subscribeMap -> { docId: data }, setMap merges fields.
+    async subscribeMap(name, onData, onError) {
+      try { await ready; } catch (e) { onError?.(e); return () => {}; }
+      return fs.onSnapshot(
+        fs.collection(db, name),
+        (snap) => onData(Object.fromEntries(snap.docs.map((d) => [d.id, d.data()]))),
+        (err) => onError?.(err),
+      );
+    },
+    async setMap(name, id, data) {
+      await ready;
+      await Promise.race([
+        fs.setDoc(fs.doc(db, name, id), data, { merge: true }),
+        new Promise((_, rej) => setTimeout(() => rej(Object.assign(new Error('timeout'), { code: 'timeout' })), 8000)),
+      ]);
+    },
     async addReview(review) {
       await ready;
       fs.addDoc(fs.collection(db, 'jokeReviews'), review).catch((e) => console.error('review failed', e)); // queued offline by Firestore
@@ -115,6 +131,19 @@ function localStore() {
       listeners.add(() => onData(read()));
       onData(read());
       return () => {};
+    },
+    async subscribeMap(name, onData) {
+      const read = () => { try { return JSON.parse(localStorage.getItem(`wgl-map-${name}`) || '{}'); } catch { return {}; } };
+      listeners.add(() => onData(read()));
+      onData(read());
+      return () => {};
+    },
+    async setMap(name, id, data) {
+      let cur = {};
+      try { cur = JSON.parse(localStorage.getItem(`wgl-map-${name}`) || '{}'); } catch {}
+      cur[id] = { ...(cur[id] || {}), ...data };
+      localStorage.setItem(`wgl-map-${name}`, JSON.stringify(cur));
+      emit();
     },
     async addReview(review) {
       let all = [];
