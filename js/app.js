@@ -6,6 +6,7 @@ import { createStore } from './store.js';
 import { confetti } from './confetti.js';
 import { DAD_JOKES } from './dadjokes.js';
 import { APP_VERSION } from './version.js';
+import { pushConfigured, pushState, enablePush, disablePush, refreshPush, notifyPosted, sendTest } from './push.js';
 
 const $app = document.getElementById('app');
 const names = Object.fromEntries(PLAYERS.map((p) => [p.id, p.name]));
@@ -29,6 +30,7 @@ const S = {
   ad: null,
   secret: null,
   settings: {},
+  push: { supported: false, permission: 'default', subscribed: false, busy: false },
   loadingMsg: J.randomLoading(),
 };
 
@@ -100,6 +102,41 @@ function render() {
     ${S.secret && S.me === 'saksham' ? secretHTML() : ''}
     ${S.ad ? adHTML() : ''}`;
   if (S.secret === 'login') document.getElementById('secretpw')?.focus();
+}
+
+// ====================== Push notifications ======================
+// Dormant (card hidden) until js/push-config.js has the Worker URL.
+async function loadPush() {
+  S.push = { ...(await pushState()), busy: false };
+  if (S.loaded && S.view === 'fun') render();
+}
+function pushCardHTML() {
+  if (!pushConfigured()) return '';
+  const p = S.push;
+  let body;
+  if (!p.supported) {
+    body = '<p class="muted">Not available here. Notifications need the home-screen app (iPhone: iOS 16.4 or newer).</p>';
+  } else if (p.permission === 'denied') {
+    body = '<p class="muted">Blocked. Allow notifications for this app in your phone\'s Settings, then come back.</p>';
+  } else if (!p.subscribed) {
+    body = `<p class="muted" style="margin-bottom:12px">Get a ping when your rival posts, plus a morning hello and an evening nudge (whichever are switched on).</p>
+      <button class="btn pink" data-a="pushOn" ${p.busy ? 'disabled' : ''}>🔔 Turn on notifications</button>`;
+  } else {
+    body = `<p style="margin-bottom:12px;font-weight:600">✅ On for this phone</p>
+      <div class="row"><button class="btn ghost small" data-a="pushTest" ${p.busy ? 'disabled' : ''}>Send me a test</button><button class="btn ghost small" data-a="pushOff" ${p.busy ? 'disabled' : ''}>Turn off</button></div>`;
+  }
+  return `<div class="card"><h2>🔔 Notifications</h2>${body}</div>`;
+}
+async function pushAction(kind) {
+  S.push.busy = true; render();
+  try {
+    if (kind === 'on') { await enablePush(S.me); toast('Notifications on 🔔'); }
+    else if (kind === 'off') { await disablePush(S.me); toast('Notifications off'); }
+    else { await sendTest(S.me); toast('Test sent. Give it a few seconds.'); }
+  } catch (err) {
+    toast(err.message || 'That did not work');
+  }
+  await loadPush();
 }
 
 // ====================== Version (shown on Saksham's side) ======================
@@ -242,6 +279,14 @@ function secretHTML() {
       <button class="btn ghost small" data-a="secretPreview">👀 Preview it on my phone</button>
     </div>
     <div class="card">
+      <h2>🔔 Push notifications</h2>
+      <p class="muted" style="margin-bottom:10px;font-size:15px">Which pings the Worker may send (everyone who turned notifications on). ${pushConfigured() ? '' : '<b>The push Worker isn\'t connected yet.</b>'}</p>
+      ${[['posted', '👀 "X just posted"'], ['morning', '☀️ Morning hello'], ['evening', '🦗 Evening nudge']].map(([k, label]) => {
+        const on = S.settings.push?.[k] === true;
+        return `<button class="btn ${on ? 'mint' : 'ghost'} small" style="display:block;width:100%;margin-bottom:8px;text-align:left" data-a="secretPush" data-v="${k}">${on ? '✅' : '⛔'} ${label}</button>`;
+      }).join('')}
+    </div>
+    <div class="card">
       <h2>💬 ${esc(names.soukhya)}'s reviews <span class="sticker">${(S.reviews || []).length}</span></h2>
       ${(S.reviews || []).length ? S.reviews.map((r) => `<div class="review"><div class="muted" style="font-size:13px">${esc(r.joke)}</div><div class="speech">${esc(r.text)}</div><div class="muted" style="font-size:11px;margin-top:2px">${esc(new Date(r.at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }))}</div></div>`).join('') : '<p class="muted" style="font-size:15px">No reviews yet. When she types a review after a joke, it shows up here.</p>'}
     </div>
@@ -261,6 +306,21 @@ function watchReviews() {
     S.reviews = list.sort((a, b) => (b.at || 0) - (a.at || 0));
     if (S.secret === 'panel' && !S.ad) render();
   }, (err) => console.warn('reviews unavailable', err.code || err.message));
+}
+async function togglePush(key) {
+  const prev = S.settings.push || {};
+  const next = { posted: prev.posted === true, morning: prev.morning === true, evening: prev.evening === true };
+  next[key] = !next[key];
+  S.settings.push = next;
+  render();
+  try {
+    await S.store.setSetting('push', next);
+    toast(next[key] ? 'Switched ON 🔔' : 'Switched OFF');
+  } catch (err) {
+    S.settings.push = prev;
+    render();
+    toast('Could not save: ' + (err.code || err.message) + '. Publish the new Firebase rules!');
+  }
 }
 async function toggleAd() {
   const next = !adEnabled();
@@ -468,6 +528,7 @@ function funHTML() {
   const bcard = (p) => `<div class="card"><h2>${p.id === 'saksham' ? '🩷' : '💚'} ${esc(p.name)}'s badges <span class="sticker">${badges[p.id].filter((b) => b.earned).length}/${badges[p.id].length}</span></h2>
     <div class="badges">${badges[p.id].map((b) => `<div class="badge ${b.earned ? '' : 'locked'}" title="${esc(b.desc)}"><span class="be">${b.earned ? b.emoji : '🔒'}</span>${esc(b.name)}<div class="muted" style="font-weight:400;font-size:11px;margin-top:2px">${esc(b.desc)}</div></div>`).join('')}</div></div>`;
   return `
+    ${pushCardHTML()}
     <div class="card"><h2>📣 Brag to the group chat</h2><p class="muted" style="margin-bottom:12px">Copies a scoreboard card you can paste anywhere.</p><button class="btn lav" data-a="share">Share the scoreboard</button></div>
     <div class="card"><h2>🧠 Rivalry facts</h2>${facts}</div>
     ${PLAYERS.map(bcard).join('')}`;
@@ -596,6 +657,7 @@ async function submitWiz() {
   try {
     const res = await S.store.save(entry);
     if (res === 'queued') toast('Saved offline. It will sync when you are back online. 📡');
+    else notifyPosted(S.me); // lets the push Worker ping the other player (if that switch is on)
     w.saved = true;
     render();
   } catch (err) {
@@ -648,7 +710,7 @@ document.addEventListener('click', (ev) => {
   if (el.classList.contains('overlay') && ev.target.closest('.sheet')) return;
   const a = el.dataset.a, v = el.dataset.v;
   switch (a) {
-    case 'who': S.me = v; ls.set('wgl-me', v); S.greet = null; syncAd(); maybeMorning(); break;
+    case 'who': S.me = v; ls.set('wgl-me', v); S.greet = null; syncAd(); maybeMorning(); onData.pushed = false; if (S.loaded) { onData.pushed = true; loadPush(); refreshPush(S.me); } break;
     case 'switchWho': {
       const other = otherPlayer(S.me);
       if (!confirm(`Switch to ${other.name}?`)) return;
@@ -671,6 +733,10 @@ document.addEventListener('click', (ev) => {
     case 'secretUnlock': unlockSecret(); return;
     case 'secretClose': S.secret = null; break;
     case 'secretToggle': toggleAd(); return;
+    case 'secretPush': togglePush(v); return;
+    case 'pushOn': pushAction('on'); return;
+    case 'pushOff': pushAction('off'); return;
+    case 'pushTest': pushAction('test'); return;
     case 'secretPreview': S.ad = { stage: 'ask', joke: nextJoke(), preview: true }; break;
     case 'tab': S.view = v; scrollTo(0, 0); break;
     case 'period': S.period = v; break;
@@ -719,6 +785,7 @@ function onData(entries) {
   if (['note', 'secretpw', 'adreview'].includes(document.activeElement?.id)) return;
   render();
   maybeMorning();
+  if (!onData.pushed && S.me) { onData.pushed = true; loadPush(); refreshPush(S.me); }
 }
 
 function onSettings(map) {

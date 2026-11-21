@@ -1,0 +1,25 @@
+name = "word-games-league-push"
+main = "src/index.js"
+compatibility_date = "2025-01-01"
+
+# Runs every hour on the hour; the code only acts at MORNING_HOUR / EVENING_HOUR in TZ_NAME.
+[triggers]
+crons = ["0 * * * *"]
+
+# Create with:  npx wrangler kv namespace create SUBS   → paste the printed id below.
+[[kv_namespaces]]
+binding = "SUBS"
+id = "REPLACE_WITH_KV_NAMESPACE_ID"
+
+[vars]
+# Time zone for the morning/evening pushes (IANA name, e.g. Asia/Kolkata, America/New_York, Europe/London).
+TZ_NAME = "Asia/Kolkata"
+MORNING_HOUR = "8"
+EVENING_HOUR = "20"
+# Only the real app may call the Worker (browsers send this Origin header).
+ALLOWED_ORIGINS = "https://saksham172121.github.io,http://localhost:8080"
+FIREBASE_API_KEY = "AIzaSyB1ECvXTu7Xv2OxyQ63aoZ6oh-LnXK6dss"
+FIREBASE_PROJECT_ID = "word-games-league"
+VAPID_SUBJECT = "https://saksham172121.github.io/word-games-league/"
+VAPID_PUBLIC_KEY = "BOn3U_dBxsWEOFgvxbiQ_kgpX5kPXfr1MmsDJdvWafh7CtPRrEwqLKe6B5e3AT49EAStUtIBpw_yRB2bnh5cLtU"
+# The private key is a SECRET, set separately (see worker/README.md). Never put it in this file.

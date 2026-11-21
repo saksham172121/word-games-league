@@ -1,3 +1,9 @@
 .DS_Store
 node_modules/
 .claude/
+IDEAS.local.md
+
+worker/node_modules/
+worker/.wrangler/
+worker/.vapid-private.txt
+worker/.dev.vars
