@@ -6,11 +6,13 @@ export const PLAYERS = [
 ];
 
 // kind: 'wordle' = lower wins (X loses) · 'waffle' = stars 0-5, higher wins · 'high' = raw points, higher wins
+//       'sudoku' = { score, time (seconds) }: higher score wins, equal score → faster time wins; 'failed' (DNF) loses
 export const GAMES = [
   { id: 'wordle', name: 'Wordle', emoji: '🟩', kind: 'wordle', optional: false },
   { id: 'krillion', name: 'Krillion', emoji: '🦐', kind: 'high', optional: false },
   { id: 'noillirk', name: 'Noillirk', emoji: '🔄', kind: 'high', optional: false },
   { id: 'waffle', name: 'Waffle', emoji: '🧇', kind: 'waffle', optional: false },
+  { id: 'sudoku', name: 'Sudoku', emoji: '🔢', kind: 'sudoku', optional: false },
   { id: 'farflung', name: 'Farflung', emoji: '🌍', kind: 'high', optional: true },
 ];
 
@@ -27,12 +29,31 @@ function rank(game, r) {
   return -Number(r.score);
 }
 
+function compareSudoku(pa, a, pb, b) {
+  const af = a.status === 'failed', bf = b.status === 'failed';
+  if (af || bf) return af && bf ? 'tie' : af ? pb : pa;
+  if (Number(a.score) !== Number(b.score)) return Number(a.score) > Number(b.score) ? pa : pb;
+  const ta = Number.isFinite(Number(a.time)) ? Number(a.time) : Infinity;
+  const tb = Number.isFinite(Number(b.time)) ? Number(b.time) : Infinity;
+  if (ta === tb) return 'tie';
+  return ta < tb ? pa : pb;
+}
+
+/** Seconds → "m:ss" (or "h:mm:ss" for an hour or more). */
+export function fmtTime(sec) {
+  const t = Math.max(0, Math.round(Number(sec) || 0));
+  const h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), s = t % 60;
+  const ss = String(s).padStart(2, '0');
+  return h ? `${h}:${String(m).padStart(2, '0')}:${ss}` : `${m}:${ss}`;
+}
+
 /** Returns winning player id, 'tie', or null (no contest: someone didn't play). */
 export function compareGame(gameId, entryA, entryB) {
   const game = gameById(gameId);
   const a = entryA?.games?.[gameId];
   const b = entryB?.games?.[gameId];
   if (!game || !played(a) || !played(b)) return null;
+  if (game.kind === 'sudoku') return compareSudoku(entryA.player, a, entryB.player, b);
   const ra = rank(game, a);
   const rb = rank(game, b);
   if (ra === rb) return 'tie';
@@ -70,5 +91,6 @@ export function fmtScore(gameId, r) {
   const game = gameById(gameId);
   if (game.kind === 'wordle') return r.status === 'failed' ? 'X' : `${r.score}/6`;
   if (game.kind === 'waffle') return `${r.score}★`;
+  if (game.kind === 'sudoku') return r.status === 'failed' ? 'DNF' : `${r.score} · ${fmtTime(r.time)}`;
   return String(r.score);
 }

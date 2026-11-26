@@ -78,6 +78,7 @@ export const BADGES = [
   { id: 'fire', emoji: '🔥', name: 'Menace', desc: '5 day-wins in a row.', test: (c) => c.stats.bestStreak >= 5 },
   { id: 'wiz', emoji: '🧙', name: 'Wordle Wizard', desc: 'Wordle in 2 or fewer.', test: (c) => c.mine.some((e) => e.games?.wordle?.status === 'done' && e.games.wordle.score <= 2) },
   { id: 'hole', emoji: '🏌️', name: 'Hole In One', desc: 'Wordle in 1. Liar.', test: (c) => c.mine.some((e) => e.games?.wordle?.status === 'done' && e.games.wordle.score === 1) },
+  { id: 'sudoku', emoji: '🧮', name: 'Sudoku Sensei', desc: 'Finish a Sudoku in under 5 minutes.', test: (c) => c.mine.some((e) => e.games?.sudoku?.status === 'done' && Number(e.games.sudoku.time) > 0 && Number(e.games.sudoku.time) < 300) },
   { id: 'waffle', emoji: '🧇', name: 'Waffle Michelin', desc: 'A perfect 5★ Waffle.', test: (c) => c.mine.some((e) => e.games?.waffle?.status === 'done' && e.games.waffle.score === 5) },
   { id: 'sweep', emoji: '🧹', name: 'Clean Sweep', desc: 'Win every game in a day (3+ games).', test: (c) => c.sweep },
   { id: 'comeback', emoji: '🦸', name: 'Comeback Kid', desc: 'Win a day after 2+ losses.', test: (c) => c.comeback },

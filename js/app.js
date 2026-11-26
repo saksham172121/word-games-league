@@ -1,4 +1,4 @@
-import { GAMES, PLAYERS, playerById, otherPlayer, fmtScore, played } from './scoring.js';
+import { GAMES, PLAYERS, playerById, otherPlayer, fmtScore, fmtTime, played } from './scoring.js';
 import { buildDays, computeStats, computeBadges, periodFilter } from './stats.js';
 import { todayISO, prettyDate, monthKey, monthTitle, shiftMonth, fromISO, toISO } from './dates.js';
 import * as J from './jokes.js';
@@ -213,24 +213,26 @@ function onDevices(map) {
 // ====================== Soukhya's one-time parchment scroll ======================
 // Shown once on her launch. If her app is older than the server's version (or older than push support),
 // she gets the "update help" scroll instead and sees the real one on a later launch.
+const SCROLL_ID = 'sudoku'; // change this id to show a new one-time scroll
+const scrollSeen = () => S.devices.soukhya?.scrolls?.[SCROLL_ID] === true || ls.get('wgl-scroll-' + SCROLL_ID) === '1';
 function maybeScroll() {
   if (S.scroll || S.me !== 'soukhya' || gated || !S.loaded || S.wiz || !S.latestChecked || !S.devicesReady) return;
-  if (S.devices.soukhya?.scrollSeen === true || ls.get('wgl-scroll-seen') === '1') return;
+  if (scrollSeen()) return;
   const stale = compareVersions(APP_VERSION, MIN_PUSH_VERSION) < 0 || (S.latest && compareVersions(APP_VERSION, S.latest) < 0);
   S.scrollPreview = false;
   S.scroll = stale ? 'update' : 'guide';
   render();
 }
 function markScrollSeen() {
-  ls.set('wgl-scroll-seen', '1');
-  S.store?.setMap?.('devices', 'soukhya', { version: APP_VERSION, lastSeen: Date.now(), scrollSeen: true }).catch(() => {});
+  ls.set('wgl-scroll-' + SCROLL_ID, '1');
+  S.store?.setMap?.('devices', 'soukhya', { version: APP_VERSION, lastSeen: Date.now(), scrolls: { [SCROLL_ID]: true } }).catch(() => {});
 }
 function scrollHTML() {
   const update = S.scroll === 'update';
   const inner = update
     ? `<h1 class="sc-title">Alas, Noble Traveller!</h1>
       <p class="sc-hail">Hail, <b>${esc(names.soukhya)}</b>!</p>
-      <p>Thy app doth run an elder version (<b>v${esc(APP_VERSION)}</b>), whilst the realm hath advanced to <b>v${esc(S.latest || MIN_PUSH_VERSION)}</b>. Without the new version, the notifications cannot reach thee. 📜</p>
+      <p>Thy app doth run an elder version (<b>v${esc(APP_VERSION)}</b>), whilst the realm hath advanced to <b>v${esc(S.latest || MIN_PUSH_VERSION)}</b>. Without the new version, the new wonders cannot reach thee. 📜</p>
       <ol class="sc-steps">
         <li>Swipe this app away entirely, then open it anew from thy home screen. Do this twice, shouldst the first attempt fail.</li>
         <li>If it persisteth in its stubbornness, remove the icon from thy home screen, open the link in <b>Safari</b>, press <b>Share ⬆︎</b> then <b>Add to Home Screen</b>, and choose thy name once more.</li>
@@ -239,15 +241,16 @@ function scrollHTML() {
       <button class="wax-btn" data-a="scrollDone">🫡 I have done so</button>`
     : `<h1 class="sc-title">Hear Ye, Hear Ye!</h1>
       <p class="sc-hail">Hail, noble <b>${esc(names.soukhya)}</b>,<br><i>${esc((nickOf('soukhya') || '').replace(/^Soukhya,?\s*/i, '') || 'Keeper of the Realm')}!</i></p>
-      <p>Thy humble servant <b>${esc(names.saksham)}</b> hath, at long last, bestowed upon thee the gift of <b>Notifications</b>! 🔔 Verily, the realm shall ping thee when thy rival doth post, and bringeth thee tidings at morn and at noon.</p>
+      <p>After many moons of thy pleading, thy humble servant <b>${esc(names.saksham)}</b> hath <b>FINALLY</b> added <b>SUDOKU</b> to the realm! 🔢 Yea, <i>finally</i>. Let it be written in the annals that thou didst ask, and ask, and ask again, and lo, thou wert heard.</p>
       <ol class="sc-steps">
-        <li>Betake thyself to the <b>🎉 Fun</b> section at the foot of this realm.</li>
-        <li>Press the button that doth read <b>“Turn on notifications”</b>, and grant thy leave when thy device doth ask.</li>
-        <li>Press <b>“Send me a test”</b> once, and behold! A missive shall appear upon thy screen. 📨</li>
+        <li>When thou loggest thy scores, <b>Sudoku</b> now cometh after Waffle, and it counteth toward the day's crown. 👑</li>
+        <li>Enter thy <b>score</b>, then press ✓ and enter thy <b>time</b>: type <b>7 3 4</b> for 7:34.</li>
+        <li>The higher score taketh the game. Should the scores be equal, the swifter hand prevaileth. ⏱️</li>
+        <li>Couldst not finish? Press <b>“Couldn't finish 💀”</b> and accept thy fate with honour.</li>
       </ol>
-      <p><b>A second boon!</b> 👑 Thou mayest now bestow a title upon thy rival, and thy rival upon thee. In the <b>Fun</b> section, seek the card <i>“Bestow a title”</i> and write what name thou wilt, the grander or the fouler the better. Beware: thine own title is written by thy rival's hand!</p>
+      <p>Go forth and fill thy grids, noble Custodian. Mayhaps thou shalt even earn the badge of <b>Sudoku Sensei</b>. 🧮</p>
       <p class="sc-sign">Sealed with wax,<br>— ${esc(names.saksham)} 🪶</p>
-      <button class="wax-btn" data-a="scrollGo">🎉 To the Fun section!</button>
+      <button class="wax-btn" data-a="scrollGo" data-v="today">🔢 To the scores!</button>
       <button class="sc-later" data-a="scrollDone">Mayhaps later</button>`;
   return `<div class="scroll-overlay"><div class="scroll">
     <div class="scroll-rod"></div>
@@ -387,8 +390,8 @@ function secretHTML() {
       }).join('')}
     </div>
     <div class="card">
-      <h2>📜 ${esc(names.soukhya)}'s scroll</h2>
-      <p class="muted" style="margin-bottom:10px;font-size:15px">Shown once, on her next launch (or an "update help" scroll if her app is behind). Status: <b>${S.devices.soukhya?.scrollSeen ? 'seen ✅' : 'not seen yet ⏳'}</b></p>
+      <h2>📜 ${esc(names.soukhya)}'s scroll: Sudoku</h2>
+      <p class="muted" style="margin-bottom:10px;font-size:15px">Shown once, on her next launch (or an "update help" scroll if her app is behind). Status: <b>${S.devices.soukhya?.scrolls?.[SCROLL_ID] ? 'seen ✅' : 'not seen yet ⏳'}</b></p>
       <div class="row"><button class="btn ghost small" data-a="scrollPreview" data-v="guide">Preview scroll</button><button class="btn ghost small" data-a="scrollPreview" data-v="update">Preview update help</button></div>
     </div>
     <div class="card">
@@ -481,6 +484,10 @@ const hidePeek = (date) => {
   return date === todayISO() && d && !d.entries[S.me] && !!d.entries[otherPlayer(S.me).id];
 };
 
+const scoreCell = (g, r) => (g.kind === 'sudoku' && r?.status === 'done'
+  ? `${esc(r.score)}<small>⏱ ${esc(fmtTime(r.time))}</small>`
+  : esc(fmtScore(g.id, r)));
+
 function dayScoresHTML(date) {
   const d = S.days[date];
   if (!d || !Object.keys(d.entries).length) return '<p class="muted" style="text-align:center;padding:8px 0">No scores logged for this day.</p>';
@@ -493,7 +500,7 @@ function dayScoresHTML(date) {
     const w = d.result.games?.[g.id];
     const cell = (e, p) => {
       const r = e?.games?.[g.id];
-      return `<div class="sv ${w === p.id ? 'win' : ''} ${!played(r) ? 'dim' : ''}">${e ? esc(fmtScore(g.id, r)) : '…'}</div>`;
+      return `<div class="sv ${w === p.id ? 'win' : ''} ${!played(r) ? 'dim' : ''}">${e ? scoreCell(g, r) : '…'}</div>`;
     };
     return `<div class="gr">${cell(ea, A)}<div class="gname"><span>${g.emoji}</span>${g.name}</div>${cell(eb, B)}</div>`;
   }).join('');
@@ -655,6 +662,7 @@ const PROMPTS = {
   waffle: 'How many stars did you get?',
   krillion: 'What was your final score?',
   noillirk: 'What was your final score?',
+  sudoku: 'Your score, then your time.',
   farflung: 'Bonus game! Final score?',
 };
 
@@ -663,7 +671,7 @@ function startWiz(date) {
   S.sheet = null;
   S.wiz = {
     date, step: 0, games: structuredClone(existing?.games || {}), note: existing?.note || '',
-    pad: '', react: '', fromRecap: false, saved: false, celebrated: false, editing: !!existing,
+    pad: '', tpad: '', field: 'score', react: '', fromRecap: false, saved: false, celebrated: false, editing: !!existing,
   };
   enterStep(0);
   render();
@@ -674,7 +682,9 @@ function enterStep(i) {
   w.step = i;
   const g = GAMES[i];
   const cur = g && w.games[g.id];
-  w.pad = cur?.status === 'done' && g.kind === 'high' ? String(cur.score) : '';
+  w.pad = cur?.status === 'done' && (g.kind === 'high' || g.kind === 'sudoku') ? String(cur.score) : '';
+  w.tpad = cur?.status === 'done' && g.kind === 'sudoku' && cur.time ? String(Math.min(99, Math.floor(cur.time / 60))) + String(cur.time % 60).padStart(2, '0') : '';
+  w.field = 'score';
   w.react = cur && cur.status !== 'skip' ? reactFor(g, cur) : '';
 }
 
@@ -682,7 +692,25 @@ function reactFor(g, r) {
   if (!r || r.status === 'skip') return J.reactSkip(vars());
   if (g.kind === 'wordle') return J.reactWordle(r.status === 'failed' ? 'X' : r.score, vars());
   if (g.kind === 'waffle') return J.reactWaffle(r.score, vars());
+  if (g.kind === 'sudoku') return J.reactSudoku(r, vars());
   return J.reactNum(g.id, r.score, vars());
+}
+
+// Sudoku time is typed as digits filling from the right: "734" -> 7:34. Returns seconds, or null if empty/invalid.
+const tdigits = (d) => (d || '').padStart(3, '0');
+const tdisp = (d) => (d ? `${Number(tdigits(d).slice(0, -2))}:${tdigits(d).slice(-2)}` : '0:00');
+function parseT(d) {
+  if (!d) return null;
+  const m = Number(tdigits(d).slice(0, -2)), sec = Number(tdigits(d).slice(-2));
+  if (sec >= 60) return null;
+  const t = m * 60 + sec;
+  return t > 0 ? t : null;
+}
+function setSudoku(g) {
+  const w = S.wiz;
+  const t = parseT(w.tpad);
+  if (w.pad && t) { w.games[g.id] = { status: 'done', score: Number(w.pad), time: t }; w.react = reactFor(g, w.games[g.id]); }
+  else { delete w.games[g.id]; w.react = ''; }
 }
 
 function wizHTML() {
@@ -709,6 +737,16 @@ function gameStepHTML(g) {
     input = `<div class="opts six">${['1', '2', '3', '4', '5', '6', 'X'].map((v) => `<button class="opt ${v === 'X' ? 'x' : ''} ${val === v ? 'sel' : ''}" data-a="pick" data-v="${v}">${v}</button>`).join('')}</div>`;
   } else if (g.kind === 'waffle') {
     input = `<div class="opts stars">${[0, 1, 2, 3, 4, 5].map((v) => `<button class="opt stars-opt ${val === String(v) ? 'sel' : ''}" data-a="pick" data-v="${v}">${v}<br>${'⭐'.repeat(Math.min(v, 5)) || '💨'}</button>`).join('')}</div>`;
+  } else if (g.kind === 'sudoku') {
+    const bad = w.tpad && !parseT(w.tpad);
+    const failed = cur?.status === 'failed';
+    input = `<div class="sfields">
+        <button class="sfield ${w.field === 'score' ? 'on' : ''}" data-a="sfield" data-v="score"><small>Score</small><b class="${w.pad ? '' : 'empty'}">${w.pad || '0'}</b></button>
+        <button class="sfield ${w.field === 'time' ? 'on' : ''}" data-a="sfield" data-v="time"><small>Time (min:sec)</small><b class="${w.tpad ? '' : 'empty'}">${tdisp(w.tpad)}</b></button>
+      </div>
+      ${bad ? '<p class="warn">Seconds only go up to 59. Type it like 734 for 7:34.</p>' : ''}
+      <div class="pad">${['1', '2', '3', '4', '5', '6', '7', '8', '9', 'del', '0', 'ok'].map((k) => `<button class="opt" data-a="key" data-v="${k}">${k === 'del' ? '⌫' : k === 'ok' ? '✓' : k}</button>`).join('')}</div>
+      <button class="btn ${failed ? 'pink' : 'ghost'} small" style="width:100%;margin-bottom:12px" data-a="pick" data-v="X">Couldn't finish 💀</button>`;
   } else {
     input = `<div class="display ${w.pad ? '' : 'empty'}">${w.pad || '0'}</div>
       <div class="pad">${['1', '2', '3', '4', '5', '6', '7', '8', '9', 'del', '0', 'ok'].map((k) => `<button class="opt" data-a="key" data-v="${k}">${k === 'del' ? '⌫' : k === 'ok' ? '✓' : k}</button>`).join('')}</div>`;
@@ -784,12 +822,26 @@ async function submitWiz() {
 // ====================== Events ======================
 function pick(v) {
   const w = S.wiz, g = GAMES[w.step];
-  w.games[g.id] = g.kind === 'wordle' && v === 'X' ? { status: 'failed', score: null } : { status: 'done', score: Number(v) };
+  if (g.kind === 'sudoku') { w.games[g.id] = { status: 'failed', score: null, time: null }; w.pad = ''; w.tpad = ''; }
+  else w.games[g.id] = g.kind === 'wordle' && v === 'X' ? { status: 'failed', score: null } : { status: 'done', score: Number(v) };
   w.react = reactFor(g, w.games[g.id]);
 }
 
 function key(k) {
   const w = S.wiz, g = GAMES[w.step];
+  if (g.kind === 'sudoku') {
+    if (k === 'ok') {
+      if (w.field === 'score' && w.pad) w.field = 'time';
+      else if (w.games[g.id]?.status === 'done') next();
+      return;
+    }
+    let v = w.field === 'score' ? w.pad : w.tpad;
+    if (k === 'del') v = v.slice(0, -1);
+    else if (v.length < (w.field === 'score' ? 6 : 4)) v = (v === '0' ? '' : v) + k;
+    if (w.field === 'score') w.pad = v; else w.tpad = v;
+    setSudoku(g);
+    return;
+  }
   if (k === 'ok') { if (w.games[g.id]) next(); return; }
   if (k === 'del') w.pad = w.pad.slice(0, -1);
   else if (w.pad.length < 6) w.pad = (w.pad === '0' ? '' : w.pad) + k;
@@ -855,7 +907,7 @@ document.addEventListener('click', (ev) => {
     case 'saveNick': saveNick(false); return;
     case 'clearNick': saveNick(true); return;
     case 'scrollDone': if (S.scroll === 'guide' && !S.scrollPreview) markScrollSeen(); S.scroll = null; break;
-    case 'scrollGo': if (!S.scrollPreview) markScrollSeen(); S.scroll = null; S.view = 'fun'; scrollTo(0, 0); break;
+    case 'scrollGo': if (!S.scrollPreview) markScrollSeen(); S.scroll = null; S.view = v || 'fun'; scrollTo(0, 0); break;
     case 'scrollPreview': S.scrollPreview = true; S.scroll = v; break;
     case 'secretPreview': S.ad = { stage: 'ask', joke: nextJoke(), preview: true }; break;
     case 'tab': S.view = v; scrollTo(0, 0); break;
@@ -866,6 +918,7 @@ document.addEventListener('click', (ev) => {
     case 'startWiz': startWiz(v); break;
     case 'pick': pick(v); break;
     case 'key': key(v); break;
+    case 'sfield': S.wiz.field = v; break;
     case 'skip': {
       const g = GAMES[S.wiz.step];
       S.wiz.games[g.id] = { status: 'skip', score: null };
@@ -935,6 +988,7 @@ function seedDemo(store) {
           krillion: { status: 'done', score: rnd(20, 140) },
           noillirk: Math.random() < 0.15 ? { status: 'skip', score: null } : { status: 'done', score: rnd(20, 140) },
           waffle: { status: 'done', score: rnd(0, 5) },
+          sudoku: Math.random() < 0.1 ? { status: 'failed', score: null, time: null } : { status: 'done', score: rnd(800, 4000), time: rnd(150, 1500) },
           farflung: Math.random() < 0.6 ? { status: 'skip', score: null } : { status: 'done', score: rnd(100, 900) },
         },
         note: Math.random() < 0.2 ? pickOne(['I was robbed.', 'Skill diff. 💅', 'my cat walked on the keyboard', 'the sun was in my eyes', 'ez']) : '',

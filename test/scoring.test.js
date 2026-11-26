@@ -105,3 +105,29 @@ test('twks: laughs become "hehehehe ~twks", idempotent, other words untouched', 
   assert.equal(twks('hehehehe ~twks'), 'hehehehe ~twks');
   assert.equal(twks('the heater is here, hehe'), 'the heater is here, hehe');
 });
+
+import { fmtTime } from '../js/scoring.js';
+test('sudoku: higher score wins, equal score -> faster time, DNF loses, both DNF tie', () => {
+  const su = (score, time) => ({ status: 'done', score, time });
+  const dnf = { status: 'failed', score: null, time: null };
+  const A = (g) => e('saksham', 'd', { sudoku: g });
+  const B = (g) => e('soukhya', 'd', { sudoku: g });
+  assert.equal(compareGame('sudoku', A(su(3000, 900)), B(su(2500, 200))), 'saksham'); // score beats speed
+  assert.equal(compareGame('sudoku', A(su(3000, 400)), B(su(3000, 300))), 'soukhya'); // tie on score -> faster
+  assert.equal(compareGame('sudoku', A(su(3000, 300)), B(su(3000, 300))), 'tie');
+  assert.equal(compareGame('sudoku', A(dnf), B(su(10, 3000))), 'soukhya');
+  assert.equal(compareGame('sudoku', A(dnf), B(dnf)), 'tie');
+  assert.equal(compareGame('sudoku', A(su(1, 1)), B({ status: 'skip', score: null })), null);
+  assert.equal(fmtScore('sudoku', su(2450, 454)), '2450 · 7:34');
+  assert.equal(fmtScore('sudoku', dnf), 'DNF');
+  assert.equal(fmtTime(3725), '1:02:05');
+});
+
+test('sudoku counts toward the day winner', () => {
+  const r = dayResult(
+    e('saksham', 'd', { wordle: done(3), sudoku: { status: 'done', score: 100, time: 600 } }),
+    e('soukhya', 'd', { wordle: done(4), sudoku: { status: 'done', score: 200, time: 900 } }),
+  );
+  assert.deepEqual(r.wins, { saksham: 1, soukhya: 1 });
+  assert.equal(r.winner, 'tie');
+});

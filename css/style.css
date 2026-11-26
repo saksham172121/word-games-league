@@ -267,3 +267,13 @@ textarea:focus { outline: 3px solid var(--lav); }
 .sc-later { display: block; margin: 8px auto 0; padding: 6px 10px; background: none; border: 0; font-family: 'IM Fell English', serif; font-style: italic; font-size: 16px; color: #6b4a22; text-decoration: underline; cursor: pointer; }
 @keyframes scrollDrop { from { transform: translateY(-30px) scale(.96); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes unroll { from { clip-path: inset(0 0 100% 0); } to { clip-path: inset(0 0 0 0); } }
+
+/* ---------- Sudoku (score + time fields) ---------- */
+.sfields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+.sfield { border: var(--line); border-radius: 18px; background: #fff; padding: 8px 4px 6px; text-align: center; cursor: pointer; font: inherit; color: var(--ink); box-shadow: inset 0 4px 0 rgba(59, 42, 77, .08); }
+.sfield.on { background: var(--lemon-soft); outline: 3px solid var(--lav); outline-offset: 1px; }
+.sfield small { display: block; font-size: 13px; font-weight: 600; color: var(--ink-soft); }
+.sfield b { display: block; font-size: 36px; font-weight: 700; line-height: 1.15; }
+.sfield b.empty { color: #cbbfd8; }
+.warn { margin: -4px 0 10px; text-align: center; font-size: 14px; font-weight: 600; color: #c0315f; }
+.sv small { display: block; font-size: 13px; font-weight: 600; color: var(--ink-soft); }

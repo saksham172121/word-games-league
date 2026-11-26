@@ -92,6 +92,37 @@ export function reactNum(gameId, n, vars) {
 }
 export const reactSkip = (vars) => say(SKIP, vars);
 
+const SUDOKU = {
+  dnf: [
+    'Did not finish. The grid won. The grid always wins. 💀🔢',
+    'DNF. Somewhere a 7 is laughing at you. 😭',
+    'You and that sudoku are no longer on speaking terms. 🪦',
+  ],
+  blitz: [ // under 5 minutes
+    'Under 5 minutes?! Are you a calculator in a trench coat? 🧮🏎️',
+    'Speedrun energy. {them} has been notified and is now worried. 😤',
+    'That was so fast the numbers got whiplash. ⚡',
+  ],
+  quick: [ // 5-10 minutes
+    'Clean and quick. Your brain is in its gym era. 💪🧠',
+    'Solid time. The grid never stood a chance. 🔢✨',
+  ],
+  steady: [ // 10-20 minutes
+    'A respectable, steady solve. Slow and smug wins the race. 🐢',
+    'Not fast, not slow. Perfectly average. Like a beige sofa. 🛋️',
+  ],
+  slow: [ // 20+ minutes
+    'Over 20 minutes… did you solve it or adopt it? 🍼',
+    'That sudoku took a whole lunch break. Respect the commitment. 🥪',
+    'Your pencil is now legally a senior citizen. ✏️👴',
+  ],
+};
+export function reactSudoku(r, vars) {
+  if (!r || r.status === 'failed') return say(SUDOKU.dnf, vars);
+  const t = Number(r.time) || 0;
+  return say(t < 300 ? SUDOKU.blitz : t < 600 ? SUDOKU.quick : t < 1200 ? SUDOKU.steady : SUDOKU.slow, vars);
+}
+
 // ---------- Day results ----------
 const DAY_WIN = [
   '{w} takes the day {a}–{b}! 👑 Absolute legend. {l}, was that… a tear? 😭',
