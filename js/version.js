@@ -1,6 +1,6 @@
 // App version (semver): MAJOR.MINOR.PATCH. Keep in sync with sw.js; `npm run bump -- patch|minor|major` does both.
 //   patch = fix or copy tweak · minor = new feature · major = big change
-export const APP_VERSION = '1.11.0';
+export const APP_VERSION = '1.11.1';
 
 /** Oldest version that has push notifications (the 🔔 card). */
 export const MIN_PUSH_VERSION = '1.9.1';

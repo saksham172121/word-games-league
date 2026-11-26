@@ -241,7 +241,7 @@ function scrollHTML() {
       <button class="wax-btn" data-a="scrollDone">🫡 I have done so</button>`
     : `<h1 class="sc-title">Hear Ye, Hear Ye!</h1>
       <p class="sc-hail">Hail, noble <b>${esc(names.soukhya)}</b>,<br><i>${esc((nickOf('soukhya') || '').replace(/^Soukhya,?\s*/i, '') || 'Keeper of the Realm')}!</i></p>
-      <p>After many moons of thy pleading, thy humble servant <b>${esc(names.saksham)}</b> hath <b>FINALLY</b> added <b>SUDOKU</b> to the realm! 🔢 Yea, <i>finally</i>. Let it be written in the annals that thou didst ask, and ask, and ask again, and lo, thou wert heard.</p>
+      <p>After many moons of thy pleading, thy humble servant <b>${esc(names.saksham)}</b> hath <b>FINALLY</b> added <b>SUDOKU</b> to the realm! 🔢 Yea, <i>finally</i>.</p>
       <ol class="sc-steps">
         <li>When thou loggest thy scores, <b>Sudoku</b> now cometh after Waffle, and it counteth toward the day's crown. 👑</li>
         <li>Enter thy <b>score</b>, then press ✓ and enter thy <b>time</b>: type <b>7 3 4</b> for 7:34.</li>
@@ -288,7 +288,7 @@ function showNotif({ emoji, title, sub }) {
 // with an AD_CHANCE probability, a random 20-90s after opening. Never twice in one session.
 const AD_KEY = 'wgl-ad-last';
 const AD_MIN_GAP_DAYS = 2;
-const AD_CHANCE = 0.35;
+const AD_CHANCE = 0.5;
 let adTimer = null;
 let adDecided = false;
 let jokeBag = [];
