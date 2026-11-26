@@ -287,7 +287,7 @@ function showNotif({ emoji, title, sub }) {
 // When on, Soukhya's phone rolls the dice once per app launch: at most once every AD_MIN_GAP_DAYS days,
 // with an AD_CHANCE probability, a random 20-90s after opening. Never twice in one session.
 const AD_KEY = 'wgl-ad-last';
-const AD_MIN_GAP_DAYS = 2;
+const AD_MIN_GAP_DAYS = 1; // 1 = any day, but at most once per day
 const AD_CHANCE = 0.5;
 let adTimer = null;
 let adDecided = false;
@@ -376,7 +376,7 @@ function secretHTML() {
     <h2>🤫 Secret panel</h2>
     <div class="card" style="margin-top:12px">
       <h2>🤡 ${esc(names.soukhya)}'s dad-joke popup</h2>
-      <p class="muted" style="margin-bottom:12px;font-size:15px">When on, it pops up on ${esc(names.soukhya)}'s phone at random: only some launches, and never two days in a row. Currently <b>${on ? 'ON' : 'OFF'}</b>.</p>
+      <p class="muted" style="margin-bottom:12px;font-size:15px">When on, it pops up on ${esc(names.soukhya)}'s phone at random: a 50/50 chance each time she opens the app, any day, at most once a day. Currently <b>${on ? 'ON' : 'OFF'}</b>.</p>
       <button class="btn ${on ? 'mint' : 'ghost'}" data-a="secretToggle">${on ? '✅ ON (tap to turn off)' : '⛔ OFF (tap to turn on)'}</button>
       <div class="gap"></div>
       <button class="btn ghost small" data-a="secretPreview">👀 Preview it on my phone</button>
